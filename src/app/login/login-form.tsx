@@ -18,11 +18,24 @@ const NETWORK_MESSAGE = 'No pudimos contactar el servicio de autenticación. Rev
 /**
  * Never report a transport failure as a credential failure: that mislabelling is
  * what makes a misconfigured environment look like a forgotten password.
+ *
+ * The client does not reliably surface the response body's `code`, so the message
+ * and HTTP status are used as fallbacks — a 401 from sign-in is by definition a
+ * rejected credential.
  */
-function messageFor(code: string | undefined) {
-  if (!code) return FALLBACK_MESSAGE;
+function messageFor(error: { code?: string; message?: string; status?: number }) {
+  const code = error.code ?? '';
   if (code.startsWith('NETWORK_')) return NETWORK_MESSAGE;
-  return MESSAGES[code] ?? FALLBACK_MESSAGE;
+  if (MESSAGES[code]) return MESSAGES[code];
+
+  const message = (error.message ?? '').toLowerCase();
+  if (message.includes('invalid email or password')) return MESSAGES.INVALID_EMAIL_OR_PASSWORD;
+  if (message.includes('banned')) return MESSAGES.USER_BANNED;
+  if (message.includes('verif')) return MESSAGES.EMAIL_NOT_VERIFIED;
+
+  if (error.status === 429) return MESSAGES.TOO_MANY_REQUESTS;
+  if (error.status === 401 || error.status === 403) return MESSAGES.INVALID_EMAIL_OR_PASSWORD;
+  return FALLBACK_MESSAGE;
 }
 
 export function LoginForm() {
@@ -43,7 +56,7 @@ export function LoginForm() {
       const { error: signInError } = await authClient.signIn.email({ email, password });
 
       if (signInError) {
-        setError(messageFor(signInError.code));
+        setError(messageFor(signInError));
         return;
       }
 
