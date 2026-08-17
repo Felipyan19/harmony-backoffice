@@ -6,9 +6,8 @@ import { NoAccessNotice } from './no-access-notice';
 export const dynamic = 'force-dynamic';
 
 const DENIAL_MESSAGES: Record<string, string> = {
-  'not-invited': 'Tu cuenta se autenticó, pero no está registrada en el backoffice. Pide a un administrador que te cree el usuario.',
-  'no-profile': 'Tu usuario existe pero no tiene un perfil asignado. Contacta a un administrador.',
-  'subject-mismatch': 'Tu credencial no coincide con la registrada para este usuario. Un administrador debe volver a enlazarla.',
+  'sin-perfil': 'Tu cuenta existe pero no tiene un perfil de acceso configurado.',
+  'sesion-expirada': 'Tu sesión fue revocada. Inicia sesión nuevamente.',
   deshabilitado: 'Tu acceso al backoffice está deshabilitado.',
 };
 
@@ -17,7 +16,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
   if (access.state === 'granted') redirect('/conversaciones');
 
-  const reason = access.state === 'denied' ? access.reason : access.state === 'disabled' ? 'deshabilitado' : params.acceso;
+  const reason = access.state === 'disabled'
+    ? 'deshabilitado'
+    : access.state === 'stale-session'
+      ? 'sesion-expirada'
+      : access.state === 'missing-profile'
+        ? 'sin-perfil'
+        : params.acceso;
   const notice = reason ? DENIAL_MESSAGES[reason] : undefined;
 
   return (
@@ -33,11 +38,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
         <div className="mt-8">
           <h1 className="text-2xl font-semibold tracking-[-0.04em] text-zinc-900">Bienvenido</h1>
-          <p className="mt-2 text-[11px] leading-5 text-zinc-500">Ingresa con tu cuenta autorizada de Harmony.</p>
+          <p className="mt-2 text-[11px] leading-5 text-zinc-500">Ingresa con tu cuenta de Harmony.</p>
         </div>
 
         {notice ? <NoAccessNotice message={notice} signedIn={access.state !== 'anonymous'} /> : null}
-
         <LoginForm />
       </section>
     </main>
