@@ -1,10 +1,12 @@
 import 'server-only';
 
-import { Algorithm, hash, verify } from '@node-rs/argon2';
+import { hash, verify } from '@node-rs/argon2';
 import type { PasswordHasher } from '../../application/ports/password-hasher';
 
+const ARGON2ID = 2;
+
 const OPTIONS = {
-  algorithm: Algorithm.Argon2id,
+  algorithm: ARGON2ID,
   memoryCost: 19_456,
   timeCost: 2,
   parallelism: 1,
