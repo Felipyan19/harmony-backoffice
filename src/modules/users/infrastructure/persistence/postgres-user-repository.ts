@@ -1,61 +1,103 @@
+import 'server-only';
+
+import { and, asc, eq, sql } from 'drizzle-orm';
 import type { RoleCode } from '@/modules/access/domain/access';
-import { getDatabase } from '@/shared/infrastructure/database/neon';
+import { getDrizzleDatabase } from '@/shared/infrastructure/database/drizzle';
+import { auditLogs, authIdentities, profileRoles, profiles, roles, users } from '@/shared/infrastructure/database/schema';
 import type { CreateInternalUserInput, UpdateInternalUserInput, UserRepository } from '../../application/ports/user-repository';
 import type { BackofficeUser, RoleOption } from '../../domain/user';
 
 export class PostgresUserRepository implements UserRepository {
   async list(): Promise<BackofficeUser[]> {
-    const sql = getDatabase();
-    const rows = await sql`
-      SELECT u.id AS user_id, p.id AS profile_id, u.email, p.display_name, p.phone, p.status, u.created_at,
-        MAX(ai.subject) FILTER (WHERE ai.provider = 'neon-auth') AS auth_subject,
-        COALESCE(array_agg(DISTINCT r.code) FILTER (WHERE r.code IS NOT NULL), '{}') AS roles
-      FROM users u JOIN profiles p ON p.user_id=u.id
-      LEFT JOIN auth_identities ai ON ai.user_id=u.id
-      LEFT JOIN profile_roles pr ON pr.profile_id=p.id
-      LEFT JOIN roles r ON r.id=pr.role_id
-      GROUP BY u.id,p.id ORDER BY p.display_name`;
-    return rows.map(mapUser);
+    const db = getDrizzleDatabase();
+    const rows = await db
+      .select({
+        userId: users.id,
+        profileId: profiles.id,
+        email: users.email,
+        displayName: profiles.displayName,
+        phone: profiles.phone,
+        status: profiles.status,
+        createdAt: users.createdAt,
+        authSubject: sql<string | null>`max(${authIdentities.subject}) filter (where ${authIdentities.provider} = 'neon-auth')`,
+        userRoles: sql<string[]>`coalesce(array_agg(distinct ${roles.code}) filter (where ${roles.code} is not null), '{}')`,
+      })
+      .from(users)
+      .innerJoin(profiles, eq(profiles.userId, users.id))
+      .leftJoin(authIdentities, eq(authIdentities.userId, users.id))
+      .leftJoin(profileRoles, eq(profileRoles.profileId, profiles.id))
+      .leftJoin(roles, eq(roles.id, profileRoles.roleId))
+      .groupBy(users.id, profiles.id)
+      .orderBy(asc(profiles.displayName));
+
+    return rows.map((row) => ({
+      userId: row.userId,
+      profileId: row.profileId,
+      authSubject: row.authSubject,
+      email: row.email,
+      displayName: row.displayName,
+      phone: row.phone ?? undefined,
+      status: row.status === 'disabled' ? 'disabled' : 'active',
+      roles: row.userRoles as RoleCode[],
+      createdAt: row.createdAt.toISOString(),
+    }));
   }
 
   async listRoles(): Promise<RoleOption[]> {
-    const sql = getDatabase();
-    const rows = await sql`SELECT code,name,description FROM roles ORDER BY name`;
-    return rows.map((r) => ({ code: String(r.code) as RoleCode, name: String(r.name), description: r.description ? String(r.description) : undefined }));
+    const db = getDrizzleDatabase();
+    const rows = await db.select({ code: roles.code, name: roles.name, description: roles.description }).from(roles).orderBy(asc(roles.name));
+    return rows.map((role) => ({ code: role.code as RoleCode, name: role.name, description: role.description ?? undefined }));
   }
 
   async createFromIdentity(input: CreateInternalUserInput): Promise<BackofficeUser> {
-    const sql = getDatabase();
-    const created = await sql`INSERT INTO users(email) VALUES (${input.email.toLowerCase()}) RETURNING id`;
-    const userId = String(created[0].id);
-    await sql`INSERT INTO auth_identities(user_id,provider,subject) VALUES (${userId},'neon-auth',${input.authSubject})`;
-    const profiles = await sql`INSERT INTO profiles(user_id,display_name,phone) VALUES (${userId},${input.displayName},${input.phone ?? null}) RETURNING id`;
-    const profileId = String(profiles[0].id);
-    for (const role of input.roles) await sql`INSERT INTO profile_roles(profile_id,role_id) SELECT ${profileId},id FROM roles WHERE code=${role} ON CONFLICT DO NOTHING`;
-    const user = await this.findByUserId(userId);
-    if (!user) throw new Error('No se pudo crear el usuario interno');
+    const db = getDrizzleDatabase();
+    const [createdUser] = await db.insert(users).values({ email: input.email.toLowerCase() }).returning({ id: users.id });
+    if (!createdUser) throw new Error('No se pudo crear el usuario interno');
+
+    await db.insert(authIdentities).values({ userId: createdUser.id, provider: 'neon-auth', subject: input.authSubject });
+    const [createdProfile] = await db.insert(profiles).values({ userId: createdUser.id, displayName: input.displayName, phone: input.phone ?? null, status: 'active' }).returning({ id: profiles.id });
+    if (!createdProfile) throw new Error('No se pudo crear el perfil');
+
+    for (const roleCode of input.roles) {
+      const [role] = await db.select({ id: roles.id }).from(roles).where(eq(roles.code, roleCode)).limit(1);
+      if (role) await db.insert(profileRoles).values({ profileId: createdProfile.id, roleId: role.id }).onConflictDoNothing();
+    }
+
+    const user = await this.findByUserId(createdUser.id);
+    if (!user) throw new Error('No se pudo cargar el usuario creado');
     return user;
   }
 
   async update(userId: string, input: UpdateInternalUserInput): Promise<BackofficeUser> {
-    const sql = getDatabase();
-    const p = await sql`SELECT id FROM profiles WHERE user_id=${userId} LIMIT 1`;
-    if (!p[0]) throw new Error('Usuario no encontrado');
-    const profileId = String(p[0].id);
-    await sql`UPDATE profiles SET display_name=${input.displayName}, phone=${input.phone ?? null}, status=${input.status}, updated_at=now() WHERE id=${profileId}`;
-    await sql`DELETE FROM profile_roles WHERE profile_id=${profileId}`;
-    for (const role of input.roles) await sql`INSERT INTO profile_roles(profile_id,role_id) SELECT ${profileId},id FROM roles WHERE code=${role} ON CONFLICT DO NOTHING`;
+    const db = getDrizzleDatabase();
+    const [profile] = await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.userId, userId)).limit(1);
+    if (!profile) throw new Error('Usuario no encontrado');
+
+    await db.update(profiles).set({ displayName: input.displayName, phone: input.phone ?? null, status: input.status, updatedAt: new Date() }).where(eq(profiles.id, profile.id));
+    await db.delete(profileRoles).where(eq(profileRoles.profileId, profile.id));
+
+    for (const roleCode of input.roles) {
+      const [role] = await db.select({ id: roles.id }).from(roles).where(eq(roles.code, roleCode)).limit(1);
+      if (role) await db.insert(profileRoles).values({ profileId: profile.id, roleId: role.id, assignedBy: input.actorProfileId ?? null }).onConflictDoNothing();
+    }
+
     const user = await this.findByUserId(userId);
     if (!user) throw new Error('Usuario no encontrado');
     return user;
   }
 
-  async remove(userId: string) { const sql=getDatabase(); await sql`DELETE FROM users WHERE id=${userId}`; }
-  async findByUserId(userId: string): Promise<BackofficeUser | null> {
-    const all = await this.list(); return all.find((u)=>u.userId===userId) ?? null;
+  async remove(userId: string) {
+    const db = getDrizzleDatabase();
+    await db.delete(users).where(eq(users.id, userId));
   }
+
+  async findByUserId(userId: string): Promise<BackofficeUser | null> {
+    const all = await this.list();
+    return all.find((user) => user.userId === userId) ?? null;
+  }
+
   async writeAudit(actorProfileId: string, action: string, resourceId: string, metadata: Record<string, unknown> = {}) {
-    const sql=getDatabase(); await sql`INSERT INTO audit_logs(actor_profile_id,action,resource_type,resource_id,metadata) VALUES (${actorProfileId},${action},'user',${resourceId},${JSON.stringify(metadata)}::jsonb)`;
+    const db = getDrizzleDatabase();
+    await db.insert(auditLogs).values({ actorProfileId, action, resourceType: 'user', resourceId, metadata });
   }
 }
-function mapUser(r: Record<string, unknown>): BackofficeUser { return { userId:String(r.user_id), profileId:String(r.profile_id), authSubject:r.auth_subject?String(r.auth_subject):null, email:String(r.email), displayName:String(r.display_name), phone:r.phone?String(r.phone):undefined, status:String(r.status)==='disabled'?'disabled':'active', roles:Array.isArray(r.roles)?r.roles.map(String) as RoleCode[]:[], createdAt:new Date(String(r.created_at)).toISOString() }; }
