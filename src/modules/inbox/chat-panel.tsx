@@ -2,35 +2,47 @@
 
 import { FormEvent } from 'react';
 import { CheckCheck, MessageCircle, MoreHorizontal, Paperclip, Send, Sparkles } from 'lucide-react';
-import type { Conversation, ConversationStatus, Customer } from '@/types/domain';
+import type { Conversation, ConversationLabel, ConversationStatus, Customer } from '@/types/domain';
 import { Avatar } from '@/modules/shared/ui';
+import { ConversationLabelBadge, ConversationLabelEditor } from './conversation-labels';
 
-export function ChatPanel({ conversation, customer, draft, onDraftChange, onSend, onStatusChange }: {
+export function ChatPanel({ conversation, customer, labels, draft, onDraftChange, onSend, onStatusChange, onToggleLabel, onCreateLabel }: {
   conversation: Conversation;
   customer: Customer;
+  labels: ConversationLabel[];
   draft: string;
   onDraftChange: (value: string) => void;
   onSend: (event: FormEvent) => void;
   onStatusChange: (status: ConversationStatus) => void;
+  onToggleLabel: (labelId: string) => void;
+  onCreateLabel: (name: string) => void;
 }) {
   return (
     <section className="flex min-h-[620px] min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-[0_10px_35px_rgba(24,60,43,0.05)] xl:min-h-0">
-      <header className="flex h-[74px] shrink-0 items-center justify-between gap-3 border-b border-zinc-100 px-4 md:px-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <Avatar name={customer.name} size="lg" />
-          <div className="min-w-0">
-            <strong className="block truncate text-[13px] font-semibold">{customer.name}</strong>
-            <span className="mt-1 block truncate text-[9px] text-zinc-400">{customer.phone} · WhatsApp</span>
+      <header className="shrink-0 border-b border-zinc-100 px-4 py-3 md:px-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar name={customer.name} size="lg" />
+            <div className="min-w-0">
+              <strong className="block truncate text-[13px] font-semibold">{customer.name}</strong>
+              <span className="mt-1 block truncate text-[9px] text-zinc-400">{customer.phone} · WhatsApp</span>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <ConversationLabelEditor labels={labels} selectedLabels={conversation.labels} onToggle={onToggleLabel} onCreate={onCreateLabel} />
+            <select value={conversation.status} onChange={(event) => onStatusChange(event.target.value as ConversationStatus)} aria-label="Estado de conversación" className="h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-[10px] font-medium text-zinc-700 outline-none transition focus:border-harmony-300 focus:ring-4 focus:ring-harmony-100">
+              <option value="open">Abierta</option>
+              <option value="pending">Pendiente</option>
+              <option value="resolved">Resuelta</option>
+            </select>
+            <button className="hidden h-9 w-9 place-items-center rounded-xl text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 sm:grid" aria-label="Más opciones"><MoreHorizontal size={18} /></button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <select value={conversation.status} onChange={(event) => onStatusChange(event.target.value as ConversationStatus)} aria-label="Estado de conversación" className="h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-[10px] font-medium text-zinc-700 outline-none transition focus:border-harmony-300 focus:ring-4 focus:ring-harmony-100">
-            <option value="open">Abierta</option>
-            <option value="pending">Pendiente</option>
-            <option value="resolved">Resuelta</option>
-          </select>
-          <button className="grid h-9 w-9 place-items-center rounded-xl text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700" aria-label="Más opciones"><MoreHorizontal size={18} /></button>
-        </div>
+        {conversation.labels.length > 0 ? (
+          <div className="mt-2.5 flex flex-wrap gap-1.5 pl-12 md:pl-14">
+            {conversation.labels.map((label) => <ConversationLabelBadge key={label.id} label={label} />)}
+          </div>
+        ) : null}
       </header>
 
       <div className="relative flex-1 overflow-y-auto bg-[#fafaf7] px-4 py-5 md:px-6">
