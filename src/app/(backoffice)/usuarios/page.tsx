@@ -1,20 +1,22 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { ShieldCheck, Users, Inbox } from 'lucide-react';
-import { auth } from '@/lib/auth/server';
-import { ensureAccessProfile, hasPermission } from '@/composition/access';
-import { userAdminService } from '@/composition/users';
+import { verifySession } from '@/lib/dal/auth';
+import { getUsersPageData } from '@/lib/dal/users';
 import { createUserAction, deleteUserAction, updateUserAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function UsersPage() {
-  const { data: session } = await auth.getSession();
-  if (!session?.user?.id || !session.user.email) redirect('/login');
-  const actor = await ensureAccessProfile.execute({ provider:'neon-auth', subject:session.user.id, email:session.user.email, displayName:session.user.name ?? session.user.email });
-  if (!(await hasPermission.execute(actor.profileId,'users.read'))) return <AccessDenied />;
-  const [users, roles] = await Promise.all([userAdminService.list(), userAdminService.listRoles()]);
-  const canManage = await hasPermission.execute(actor.profileId,'users.manage');
+  await verifySession();
+
+  let data: Awaited<ReturnType<typeof getUsersPageData>>;
+  try {
+    data = await getUsersPageData();
+  } catch {
+    return <AccessDenied />;
+  }
+
+  const { users, roles, canManage } = data;
 
   return <main className="flex min-h-screen bg-[#f4f5f2] text-zinc-900">
     <aside className="hidden min-h-screen w-[220px] shrink-0 flex-col bg-harmony-900 text-white lg:flex">
@@ -28,5 +30,5 @@ export default async function UsersPage() {
   </main>;
 }
 
-function CreateUserForm({roles}:{roles:Awaited<ReturnType<typeof userAdminService.listRoles>>}) { return <form action={createUserAction} className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm"><div className="mb-4 text-[12px] font-semibold">Crear usuario</div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"><input name="displayName" required placeholder="Nombre" className="rounded-xl border border-zinc-200 px-3 py-2.5 text-[10px]"/><input name="email" type="email" required placeholder="Correo" className="rounded-xl border border-zinc-200 px-3 py-2.5 text-[10px]"/><input name="password" type="password" minLength={8} required placeholder="Contraseña temporal" className="rounded-xl border border-zinc-200 px-3 py-2.5 text-[10px]"/><input name="phone" placeholder="Teléfono" className="rounded-xl border border-zinc-200 px-3 py-2.5 text-[10px]"/></div><div className="mt-4 flex flex-wrap items-center gap-4">{roles.map((role)=><label key={role.code} className="flex items-center gap-2 text-[10px]"><input type="checkbox" name="roles" value={role.code}/>{role.name}</label>)}<button className="ml-auto rounded-xl bg-harmony-800 px-4 py-2.5 text-[10px] font-semibold text-white">Crear usuario</button></div></form> }
+function CreateUserForm({roles}:{roles:Array<{code:'admin'|'agent'|'receptionist';name:string;description?:string}>}) { return <form action={createUserAction} className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm"><div className="mb-4 text-[12px] font-semibold">Crear usuario</div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"><input name="displayName" required placeholder="Nombre" className="rounded-xl border border-zinc-200 px-3 py-2.5 text-[10px]"/><input name="email" type="email" required placeholder="Correo" className="rounded-xl border border-zinc-200 px-3 py-2.5 text-[10px]"/><input name="password" type="password" minLength={8} required placeholder="Contraseña temporal" autoComplete="new-password" className="rounded-xl border border-zinc-200 px-3 py-2.5 text-[10px]"/><input name="phone" placeholder="Teléfono" className="rounded-xl border border-zinc-200 px-3 py-2.5 text-[10px]"/></div><div className="mt-4 flex flex-wrap items-center gap-4">{roles.map((role)=><label key={role.code} className="flex items-center gap-2 text-[10px]"><input type="checkbox" name="roles" value={role.code}/>{role.name}</label>)}<button className="ml-auto rounded-xl bg-harmony-800 px-4 py-2.5 text-[10px] font-semibold text-white">Crear usuario</button></div></form> }
 function AccessDenied(){return <main className="grid min-h-screen place-items-center bg-[#f4f5f2]"><div className="rounded-2xl border bg-white p-8 text-center"><ShieldCheck className="mx-auto text-zinc-300"/><h1 className="mt-3 font-semibold">Acceso restringido</h1><p className="mt-1 text-sm text-zinc-500">No tienes permiso para ver usuarios.</p></div></main>}
