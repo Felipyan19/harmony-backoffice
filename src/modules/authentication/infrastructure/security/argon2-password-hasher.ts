@@ -1,10 +1,11 @@
 import 'server-only';
 
-import { Algorithm, hash, verify } from '@node-rs/argon2';
+import { hash, verify } from '@node-rs/argon2';
 import type { PasswordHasher } from '../../application/ports/password-hasher';
 
+// @node-rs/argon2 defaults to Argon2id. Omitting the ambient const enum keeps
+// this adapter compatible with TypeScript isolatedModules while preserving Argon2id.
 const OPTIONS = {
-  algorithm: Algorithm.Argon2id,
   memoryCost: 19_456,
   timeCost: 2,
   parallelism: 1,
