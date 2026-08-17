@@ -2,93 +2,149 @@
 
 ## Goal
 
-Build a focused customer messaging backoffice for Harmony that can progressively replace Chatwoot for the workflows Harmony actually uses.
+Build a focused Harmony backoffice with portable PostgreSQL persistence and strict module boundaries. Infrastructure providers must be replaceable without changing domain or application use cases.
 
-## V1 scope
+## Core architecture
 
-- Customer directory
-- Conversation inbox
-- Conversation states: open, pending, resolved
-- WhatsApp as the first channel
-- Message history
-- Human reply composer
-- Customer profile, tags and internal notes
-- Agent/AI attribution in the transcript
+```text
+Next.js App Router
+        │
+        ├── Server Components / Server Actions
+        │
+        ▼
+       DAL
+  session + RBAC checks
+        │
+        ▼
+Application use cases
+        │
+        ▼
+       Ports
+   ┌────┼───────────┐
+   ▼    ▼           ▼
+Users  Messaging  Authentication
+   │    │           │
+   └────┴─────┬─────┘
+              ▼
+       Infrastructure
+       Drizzle + pg
+              │
+              ▼
+          PostgreSQL
+```
 
-## Domain
+Neon is currently only the PostgreSQL host. Runtime code uses `pg` and `drizzle-orm/node-postgres`, so moving to a self-managed PostgreSQL server is a `DATABASE_URL`/infrastructure operation rather than a domain rewrite.
 
-The domain follows the useful core of helpdesk systems such as Chatwoot without copying their full product surface:
+## Authentication
+
+Authentication is application-owned. There is no runtime dependency on Neon Auth.
+
+```text
+/login
+  │
+  ▼
+Auth.js v5 Credentials
+  │
+  ▼
+AuthenticateUser
+  ├── CredentialRepository
+  └── PasswordHasher
+         │
+         ▼
+      Argon2id
+  │
+  ▼
+PostgreSQL
+  ├── users
+  ├── password_credentials
+  └── profiles
+```
+
+Auth.js uses JWT sessions for credentials. Tokens carry stable identity and `sessionVersion`, not roles or permissions. `users.session_version` supports explicit session revocation when an account is disabled or credentials are reset.
+
+## Authorization
+
+Authentication and authorization remain separate:
+
+```text
+Auth.js session.user.id
+        │
+        ▼
+      profiles
+        │
+        ▼
+  profile_roles
+        │
+        ▼
+       roles
+        │
+        ▼
+ role_permissions
+        │
+        ▼
+   permissions
+```
+
+`requirePermission()` is the server-side authorization boundary for sensitive reads/mutations. Proxy/middleware performs only an early session redirect. The browser is never authoritative for RBAC.
+
+## User administration
+
+User creation, credential persistence, profile creation and role grants are one PostgreSQL transaction. Password hashing is behind the `PasswordHasher` port. Status changes increment `session_version`; deletion is handled locally with database relationships instead of coordinating an external identity provider.
+
+## Messaging domain
 
 ```text
 Customer
   └── Conversation
-        ├── Channel (WhatsApp first)
+        ├── Channel
         ├── Status
         ├── Assignment
         └── Message[]
               ├── direction
-              ├── senderType (customer | agent | bot)
+              ├── senderType
               └── delivery status
 ```
 
-## Next.js structure
+Target messaging flow:
 
 ```text
-src/
-├── app/
-│   ├── layout.tsx       # server layout / metadata
-│   ├── page.tsx         # route entrypoint
-│   └── globals.css      # Harmony design tokens
-├── components/
-│   └── harmony-backoffice.tsx # interactive workspace (V1)
-├── lib/
-│   └── mock-data.ts     # temporary seeded data
-└── types/
-    └── domain.ts        # customer/conversation/message contracts
-```
-
-The App Router entrypoints remain Server Components by default. Interactive state is isolated in the client workspace. As backend integration lands, data loading should move back to server-side services/route handlers and the client component should receive serializable view models.
-
-## Target production architecture
-
-```text
-WhatsApp / Agent backend
+WhatsApp / Harmony Agent
         │
         ▼
-  Channel Adapter
+   Channel Adapter
         │
         ▼
- Messaging Service
+ Messaging application
    ├── Customers
    ├── Conversations
    ├── Messages
    └── Assignments
         │
-        ├── PostgreSQL
-        └── Realtime events (WebSocket/SSE)
+        ▼
+     PostgreSQL
+        │
+        └── realtime events
                 │
                 ▼
         Harmony Backoffice
 ```
 
-### Recommended boundaries
+The frontend must not depend directly on Meta/WhatsApp APIs. Channel-specific payloads stay behind adapters.
 
-- `customers`: identity, profile, tags and notes.
-- `conversations`: lifecycle, assignment, channel and unread state.
-- `messages`: immutable transcript and delivery state.
-- `channels`: adapters for WhatsApp/web instead of leaking provider payloads into the UI.
-- `realtime`: new message/status events.
-- `auth`: staff access and roles.
+## Modules
 
-## Important V1 limitation
+- `authentication`: credentials, hashing contract and authentication use case.
+- `access`: profiles, roles, permissions and authorization queries.
+- `users`: staff lifecycle and role administration.
+- `customers`: customer identity, tags and notes.
+- `conversations`: lifecycle, assignment and unread state.
+- `messages`: transcript and delivery state.
+- `channels`: WhatsApp/web/Instagram adapters as they are introduced.
 
-The current branch uses seeded in-browser state so the UX can be exercised immediately. Sending a message updates the active conversation locally; it does **not** yet send a WhatsApp message or persist to a database.
+## Legacy rollback data
 
-## Next implementation slice
+`neon_auth` and `auth_identities` may remain physically present during the initial cutover, but no runtime authentication path reads them. They should be removed only in a later migration after the Auth.js/PostgreSQL flow is proven stable in production.
 
-1. PostgreSQL schema for customers, conversations and messages.
-2. Route handlers/service layer for list/read/send operations.
-3. Connect the existing Harmony agent/WhatsApp backend through a channel adapter.
-4. Realtime inbound messages.
-5. Authentication and staff assignment.
-6. Replace mock data with persisted records.
+## Current product limitation
+
+The messaging workspace still uses seeded client-side mock data for part of the V1 UX. Authentication, RBAC and user administration are being moved to real PostgreSQL first; persisted messaging/realtime integration remains a separate implementation slice.
