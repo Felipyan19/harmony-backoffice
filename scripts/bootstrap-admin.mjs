@@ -11,9 +11,10 @@
 //   npm run auth:bootstrap-admin
 
 import pg from 'pg';
-import { Algorithm, hash } from '@node-rs/argon2';
+import { hash } from '@node-rs/argon2';
 
 const { Client } = pg;
+const ARGON2ID = 2;
 const checkOnly = process.argv.includes('--check');
 const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
 const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
@@ -56,7 +57,7 @@ try {
   }
 
   const passwordHash = await hash(password.normalize('NFKC'), {
-    algorithm: Algorithm.Argon2id,
+    algorithm: ARGON2ID,
     memoryCost: 19_456,
     timeCost: 2,
     parallelism: 1,
