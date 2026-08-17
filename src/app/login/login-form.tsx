@@ -1,9 +1,9 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { LockKeyhole, Mail } from 'lucide-react';
+import { authClient } from '@/lib/auth/client';
 
 export function LoginForm() {
   const router = useRouter();
@@ -16,15 +16,13 @@ export function LoginForm() {
     setLoading(true);
 
     const form = new FormData(event.currentTarget);
-    const result = await signIn('credentials', {
-      email: form.get('email'),
-      password: form.get('password'),
-      redirect: false,
-    });
+    const email = String(form.get('email') ?? '').trim().toLowerCase();
+    const password = String(form.get('password') ?? '');
+    const result = await authClient.signIn.email({ email, password });
 
     setLoading(false);
 
-    if (result?.error) {
+    if (result.error) {
       setError('Correo o contraseña incorrectos.');
       return;
     }
@@ -39,7 +37,7 @@ export function LoginForm() {
         <span className="mb-2 block text-[11px] font-medium text-zinc-700">Correo</span>
         <span className="flex h-12 items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 transition focus-within:border-harmony-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-harmony-100">
           <Mail size={16} className="text-zinc-400" />
-          <input name="email" type="email" autoComplete="email" required placeholder="admin@harmony.com" className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-zinc-400" />
+          <input name="email" type="email" autoComplete="email" required placeholder="usuario@harmony.com" className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-zinc-400" />
         </span>
       </label>
 

@@ -1,9 +1,11 @@
 import { redirect } from 'next/navigation';
-import { auth } from '@/auth';
+import { auth } from '@/lib/auth/server';
 import { LoginForm } from './login-form';
 
+export const dynamic = 'force-dynamic';
+
 export default async function LoginPage() {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (session?.user) redirect('/conversaciones');
 
   return (
@@ -19,7 +21,7 @@ export default async function LoginPage() {
 
         <div className="mt-8">
           <h1 className="text-2xl font-semibold tracking-[-0.04em] text-zinc-900">Bienvenido</h1>
-          <p className="mt-2 text-[11px] leading-5 text-zinc-500">Ingresa con las credenciales administrativas de Harmony.</p>
+          <p className="mt-2 text-[11px] leading-5 text-zinc-500">Ingresa con tu cuenta autorizada de Harmony.</p>
         </div>
 
         <LoginForm />
