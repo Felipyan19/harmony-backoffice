@@ -4,7 +4,10 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LockKeyhole, Mail } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
-import { repairBootstrapAdminAction } from './actions';
+import {
+  finalizeBootstrapAdminRepairAction,
+  prepareBootstrapAdminRepairAction,
+} from './actions';
 
 export function LoginForm() {
   const router = useRouter();
@@ -24,8 +27,24 @@ export function LoginForm() {
       let result = await authClient.signIn.email({ email, password });
 
       if (result.error) {
-        const repair = await repairBootstrapAdminAction({ email, password });
-        if (repair.repaired) {
+        const repair = await prepareBootstrapAdminRepairAction({ email, password });
+
+        if (repair.prepared) {
+          const signup = await authClient.signUp.email({
+            email,
+            password,
+            name: 'IgniteApps',
+          });
+
+          if (signup.error) {
+            throw new Error('No se pudo recrear la identidad de acceso');
+          }
+
+          const finalized = await finalizeBootstrapAdminRepairAction({ email });
+          if (!finalized.finalized) {
+            throw new Error('No se pudo enlazar la identidad nueva');
+          }
+
           result = await authClient.signIn.email({ email, password });
         }
       }
