@@ -24,7 +24,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Lint
         run: npm run lint
@@ -37,7 +37,6 @@ jobs:
 
       - name: Build
         env:
-          NEON_AUTH_BASE_URL: https://example.invalid/auth
-          NEON_AUTH_COOKIE_SECRET: ci-only-cookie-secret-32-characters-minimum
+          AUTH_SECRET: ci-only-auth-secret-32-characters-minimum
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: npm run build
