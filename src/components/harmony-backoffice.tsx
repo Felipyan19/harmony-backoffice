@@ -4,8 +4,15 @@ import { FormEvent, ReactNode, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, ChevronRight, Inbox, LogOut, ShieldCheck, Users } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
-import { customers, initialConversations } from '@/lib/mock-data';
-import type { Conversation, ConversationStatus, Customer } from '@/types/domain';
+import { customers, initialConversationLabels, initialConversations } from '@/lib/mock-data';
+import type { Conversation, ConversationLabel, ConversationStatus, Customer } from '@/types/domain';
+import {
+  ALL_LABELS_FILTER,
+  findConversationLabelByName,
+  matchesConversationLabel,
+  nextConversationLabelColor,
+  normalizeConversationLabelName,
+} from '@/modules/conversations/domain/conversation-labels';
 import { ConversationList, type InboxFilter } from '@/modules/inbox/conversation-list';
 import { ChatPanel } from '@/modules/inbox/chat-panel';
 import { CustomerDetails } from '@/modules/customers/customer-details';
@@ -17,7 +24,9 @@ export function HarmonyBackoffice({ initialView = 'conversations' }: { initialVi
   const router = useRouter();
   const [view, setView] = useState<View>(initialView);
   const [filter, setFilter] = useState<InboxFilter>('all');
+  const [labelFilter, setLabelFilter] = useState(ALL_LABELS_FILTER);
   const [query, setQuery] = useState('');
+  const [labels, setLabels] = useState<ConversationLabel[]>(initialConversationLabels);
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
   const [selectedConversationId, setSelectedConversationId] = useState(initialConversations[0].id);
   const [selectedCustomerId, setSelectedCustomerId] = useState(customers[0].id);
@@ -32,10 +41,15 @@ export function HarmonyBackoffice({ initialView = 'conversations' }: { initialVi
       const customer = customers.find((item) => item.id === conversation.customerId);
       const lastMessage = conversation.messages.at(-1)?.content ?? '';
       const matchesFilter = filter === 'all' || conversation.status === filter;
-      const matchesQuery = !normalized || customer?.name.toLowerCase().includes(normalized) || customer?.phone.includes(normalized) || lastMessage.toLowerCase().includes(normalized);
-      return matchesFilter && matchesQuery;
+      const matchesLabel = matchesConversationLabel(conversation, labelFilter);
+      const matchesQuery = !normalized
+        || customer?.name.toLowerCase().includes(normalized)
+        || customer?.phone.includes(normalized)
+        || lastMessage.toLowerCase().includes(normalized)
+        || conversation.labels.some((label) => label.name.toLowerCase().includes(normalized));
+      return matchesFilter && matchesLabel && matchesQuery;
     });
-  }, [conversations, filter, query]);
+  }, [conversations, filter, labelFilter, query]);
 
   const filteredCustomers = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -83,6 +97,42 @@ export function HarmonyBackoffice({ initialView = 'conversations' }: { initialVi
     setConversations((current) => current.map((item) => item.id === selectedConversation.id ? { ...item, status } : item));
   }
 
+  function toggleConversationLabel(labelId: string) {
+    const label = labels.find((item) => item.id === labelId);
+    if (!label) return;
+
+    setConversations((current) => current.map((conversation) => {
+      if (conversation.id !== selectedConversation.id) return conversation;
+      const assigned = conversation.labels.some((item) => item.id === labelId);
+      return {
+        ...conversation,
+        labels: assigned ? conversation.labels.filter((item) => item.id !== labelId) : [...conversation.labels, label],
+      };
+    }));
+  }
+
+  function createConversationLabel(name: string) {
+    const normalizedName = normalizeConversationLabelName(name);
+    if (!normalizedName) return;
+
+    const existing = findConversationLabelByName(labels, normalizedName);
+    if (existing) {
+      setConversations((current) => current.map((conversation) => {
+        if (conversation.id !== selectedConversation.id || conversation.labels.some((item) => item.id === existing.id)) return conversation;
+        return { ...conversation, labels: [...conversation.labels, existing] };
+      }));
+      return;
+    }
+
+    const created: ConversationLabel = {
+      id: `lbl_${Date.now().toString(36)}`,
+      name: normalizedName,
+      color: nextConversationLabelColor(labels.length),
+    };
+    setLabels((current) => [...current, created]);
+    setConversations((current) => current.map((conversation) => conversation.id === selectedConversation.id ? { ...conversation, labels: [...conversation.labels, created] } : conversation));
+  }
+
   const pendingCount = conversations.filter((item) => item.status === 'pending').length;
   const unreadCount = conversations.reduce((total, item) => total + item.unreadCount, 0);
 
@@ -103,8 +153,8 @@ export function HarmonyBackoffice({ initialView = 'conversations' }: { initialVi
 
         {view === 'conversations' ? (
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 xl:grid-cols-[330px_minmax(520px,1fr)_300px] 2xl:grid-cols-[360px_minmax(620px,1fr)_320px]">
-            <ConversationList conversations={filteredConversations} customers={customers} selectedId={selectedConversationId} query={query} filter={filter} onQueryChange={setQuery} onFilterChange={setFilter} onSelect={openConversation} />
-            <ChatPanel conversation={selectedConversation} customer={selectedCustomer} draft={draft} onDraftChange={setDraft} onSend={sendMessage} onStatusChange={changeStatus} />
+            <ConversationList conversations={filteredConversations} customers={customers} labels={labels} selectedId={selectedConversationId} query={query} filter={filter} labelFilter={labelFilter} onQueryChange={setQuery} onFilterChange={setFilter} onLabelFilterChange={setLabelFilter} onSelect={openConversation} />
+            <ChatPanel conversation={selectedConversation} customer={selectedCustomer} labels={labels} draft={draft} onDraftChange={setDraft} onSend={sendMessage} onStatusChange={changeStatus} onToggleLabel={toggleConversationLabel} onCreateLabel={createConversationLabel} />
             <CustomerDetails customer={selectedCustomer} conversation={selectedConversation} onOpenCustomers={() => navigate('customers')} />
           </div>
         ) : (

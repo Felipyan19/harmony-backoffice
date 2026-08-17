@@ -3,6 +3,8 @@ export type { Customer } from '@/modules/customers/domain/customer';
 export type {
   Channel,
   Conversation,
+  ConversationLabel,
+  ConversationLabelColor,
   ConversationStatus,
   Message,
   MessageDirection,
