@@ -1,5 +1,8 @@
 'use client';
 
-import { createAuthClient } from '@neondatabase/auth/next';
+import { signOut } from 'next-auth/react';
 
-export const authClient = createAuthClient();
+/** Compatibility facade for legacy UI imports. Authentication is owned by Auth.js. */
+export const authClient = {
+  signOut: () => signOut({ redirect: false }),
+};

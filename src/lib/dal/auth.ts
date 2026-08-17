@@ -2,28 +2,27 @@ import 'server-only';
 
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth/server';
-import { hasPermission, resolveAccessProfile } from '@/composition/access';
-import type { AccessDenialReason } from '@/modules/access/application/ports/access-repository';
+import { auth } from '@/auth';
+import { accessRepository, hasPermission } from '@/composition/access';
 import type { AccessProfile, PermissionCode } from '@/modules/access/domain/access';
-
-const PROVIDER = 'neon-auth';
 
 export type AccessState =
   | { state: 'anonymous' }
   | { state: 'granted'; profile: AccessProfile }
-  | { state: 'denied'; reason: AccessDenialReason }
-  | { state: 'disabled' };
+  | { state: 'disabled' }
+  | { state: 'stale-session' }
+  | { state: 'missing-profile' };
 
 export const getSessionUser = cache(async () => {
-  const { data: session } = await auth.getSession();
+  const session = await auth();
   const user = session?.user;
   if (!user?.id || !user.email) return null;
 
   return {
-    authSubject: user.id,
+    userId: user.id,
     email: user.email,
     displayName: user.name ?? user.email,
+    sessionVersion: user.sessionVersion,
   };
 });
 
@@ -33,23 +32,16 @@ export const verifySession = cache(async () => {
   return user;
 });
 
-/**
- * Non-redirecting access lookup. The login page needs it to avoid bouncing a
- * signed-in user with no RBAC profile back and forth between /login and the app.
- */
 export const getAccessState = cache(async (): Promise<AccessState> => {
-  const user = await getSessionUser();
-  if (!user) return { state: 'anonymous' };
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) return { state: 'anonymous' };
 
-  const resolution = await resolveAccessProfile.execute({
-    provider: PROVIDER,
-    subject: user.authSubject,
-    email: user.email,
-  });
+  const profile = await accessRepository.getByUserId(sessionUser.userId);
+  if (!profile) return { state: 'missing-profile' };
+  if (profile.status !== 'active') return { state: 'disabled' };
+  if (profile.sessionVersion !== sessionUser.sessionVersion) return { state: 'stale-session' };
 
-  if (!resolution.granted) return { state: 'denied', reason: resolution.reason };
-  if (resolution.profile.status !== 'active') return { state: 'disabled' };
-  return { state: 'granted', profile: resolution.profile };
+  return { state: 'granted', profile };
 });
 
 export const getCurrentAccessProfile = cache(async (): Promise<AccessProfile> => {
@@ -57,7 +49,8 @@ export const getCurrentAccessProfile = cache(async (): Promise<AccessProfile> =>
 
   if (access.state === 'anonymous') redirect('/login');
   if (access.state === 'disabled') redirect('/login?acceso=deshabilitado');
-  if (access.state === 'denied') redirect(`/login?acceso=${access.reason}`);
+  if (access.state === 'stale-session') redirect('/login?acceso=sesion-expirada');
+  if (access.state === 'missing-profile') redirect('/login?acceso=sin-perfil');
 
   return access.profile;
 });

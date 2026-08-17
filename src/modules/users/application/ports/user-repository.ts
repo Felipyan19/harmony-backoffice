@@ -2,11 +2,12 @@ import type { RoleCode } from '@/modules/access/domain/access';
 import type { BackofficeUser, RoleOption } from '../../domain/user';
 
 export interface CreateInternalUserInput {
-  authSubject: string;
   email: string;
+  passwordHash: string;
   displayName: string;
   phone?: string;
   roles: RoleCode[];
+  actorProfileId?: string;
 }
 
 export interface UpdateInternalUserInput {
@@ -20,7 +21,7 @@ export interface UpdateInternalUserInput {
 export interface UserRepository {
   list(): Promise<BackofficeUser[]>;
   listRoles(): Promise<RoleOption[]>;
-  createFromIdentity(input: CreateInternalUserInput): Promise<BackofficeUser>;
+  create(input: CreateInternalUserInput): Promise<BackofficeUser>;
   update(userId: string, input: UpdateInternalUserInput): Promise<BackofficeUser>;
   remove(userId: string): Promise<void>;
   findByUserId(userId: string): Promise<BackofficeUser | null>;

@@ -2,41 +2,11 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import { LockKeyhole, Mail } from 'lucide-react';
-import { authClient } from '@/lib/auth/client';
 
-const MESSAGES: Record<string, string> = {
-  INVALID_EMAIL_OR_PASSWORD: 'Correo o contraseña incorrectos.',
-  USER_BANNED: 'Tu acceso está deshabilitado. Contacta a un administrador.',
-  EMAIL_NOT_VERIFIED: 'Debes verificar tu correo antes de ingresar.',
-  TOO_MANY_REQUESTS: 'Demasiados intentos. Espera unos minutos.',
-};
-
+const INVALID_MESSAGE = 'Correo o contraseña incorrectos.';
 const FALLBACK_MESSAGE = 'No fue posible iniciar sesión. Intenta nuevamente.';
-const NETWORK_MESSAGE = 'No pudimos contactar el servicio de autenticación. Revisa tu conexión e intenta de nuevo.';
-
-/**
- * Never report a transport failure as a credential failure: that mislabelling is
- * what makes a misconfigured environment look like a forgotten password.
- *
- * The client does not reliably surface the response body's `code`, so the message
- * and HTTP status are used as fallbacks — a 401 from sign-in is by definition a
- * rejected credential.
- */
-function messageFor(error: { code?: string; message?: string; status?: number }) {
-  const code = error.code ?? '';
-  if (code.startsWith('NETWORK_')) return NETWORK_MESSAGE;
-  if (MESSAGES[code]) return MESSAGES[code];
-
-  const message = (error.message ?? '').toLowerCase();
-  if (message.includes('invalid email or password')) return MESSAGES.INVALID_EMAIL_OR_PASSWORD;
-  if (message.includes('banned')) return MESSAGES.USER_BANNED;
-  if (message.includes('verif')) return MESSAGES.EMAIL_NOT_VERIFIED;
-
-  if (error.status === 429) return MESSAGES.TOO_MANY_REQUESTS;
-  if (error.status === 401 || error.status === 403) return MESSAGES.INVALID_EMAIL_OR_PASSWORD;
-  return FALLBACK_MESSAGE;
-}
 
 export function LoginForm() {
   const router = useRouter();
@@ -53,10 +23,14 @@ export function LoginForm() {
       const email = String(form.get('email') ?? '').trim().toLowerCase();
       const password = String(form.get('password') ?? '');
 
-      const { error: signInError } = await authClient.signIn.email({ email, password });
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
 
-      if (signInError) {
-        setError(messageFor(signInError));
+      if (result?.error) {
+        setError(INVALID_MESSAGE);
         return;
       }
 
@@ -83,7 +57,7 @@ export function LoginForm() {
         <span className="mb-2 block text-[11px] font-medium text-zinc-700">Contraseña</span>
         <span className="flex h-12 items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 transition focus-within:border-harmony-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-harmony-100">
           <LockKeyhole size={16} className="text-zinc-400" />
-          <input name="password" type="password" autoComplete="current-password" required minLength={8} className="min-w-0 flex-1 bg-transparent text-[12px] outline-none" />
+          <input name="password" type="password" autoComplete="current-password" required minLength={8} maxLength={256} className="min-w-0 flex-1 bg-transparent text-[12px] outline-none" />
         </span>
       </label>
 

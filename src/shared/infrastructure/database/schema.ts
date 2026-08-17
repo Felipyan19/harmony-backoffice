@@ -1,16 +1,27 @@
-import { integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').notNull(),
+  sessionVersion: integer('session_version').default(1).notNull(),
+  lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-}, (table) => [uniqueIndex('users_email_lower_key').on(sql`lower(${table.email})`)]);
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [uniqueIndex('users_email_unique_idx').on(sql`lower(${table.email})`)]);
+
+export const passwordCredentials = pgTable('password_credentials', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  passwordHash: text('password_hash').notNull(),
+  passwordChangedAt: timestamp('password_changed_at', { withTimezone: true }).defaultNow().notNull(),
+  mustChangePassword: boolean('must_change_password').default(false).notNull(),
+  failedAttempts: integer('failed_attempts').default(0).notNull(),
+  lockedUntil: timestamp('locked_until', { withTimezone: true }),
+});
 
 export const profiles = pgTable('profiles', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   displayName: text('display_name').notNull(),
   phone: text('phone'),
   status: text('status').default('active').notNull(),
@@ -18,15 +29,14 @@ export const profiles = pgTable('profiles', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [uniqueIndex('profiles_user_id_key').on(table.userId)]);
 
+/** Legacy table kept temporarily for rollback/audit only. Runtime authentication no longer reads it. */
 export const authIdentities = pgTable('auth_identities', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull(),
   provider: text('provider').notNull(),
   subject: text('subject').notNull(),
 }, (table) => [
-  // One credential maps to exactly one Harmony user...
   uniqueIndex('auth_identities_provider_subject_key').on(table.provider, table.subject),
-  // ...and one Harmony user holds at most one credential per provider.
   uniqueIndex('auth_identities_user_provider_key').on(table.userId, table.provider),
 ]);
 

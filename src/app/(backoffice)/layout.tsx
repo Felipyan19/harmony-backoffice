@@ -1,12 +1,9 @@
 import type { ReactNode } from 'react';
-import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth/server';
+import { getCurrentAccessProfile } from '@/lib/dal/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function BackofficeLayout({ children }: { children: ReactNode }) {
-  const { data: session } = await auth.getSession();
-  if (!session?.user) redirect('/login');
-
+  await getCurrentAccessProfile();
   return children;
 }

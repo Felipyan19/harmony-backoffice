@@ -1,92 +1,86 @@
-# Bootstrapping and operating access
+# Authentication and access operations
 
-Authentication and authorization are separate systems in Harmony, and the boundary
-between them is the reason this procedure exists:
+Harmony owns authentication and authorization in PostgreSQL. Neon is only the current PostgreSQL host and is not an authentication dependency.
 
-- **Neon Auth owns credentials.** Emails, passwords, hashes, sessions. The app reads
-  `neon_auth` at most for diagnostics and never writes to it.
-- **PostgreSQL owns entitlement.** `users`, `profiles`, `auth_identities`,
-  `profile_roles`. A valid session proves who you are; only these tables decide what
-  you may do.
+## Ownership boundary
 
-## Why the first admin cannot be created from code
+- **Auth.js v5** handles the Next.js sign-in/session protocol.
+- **PostgreSQL** owns users, password credentials, profiles, roles, permissions and audit history.
+- **Argon2id** hashes passwords behind the `PasswordHasher` application port.
+- **RBAC is server-authoritative.** Roles and permissions are read from PostgreSQL for protected operations; they are not trusted from the browser or copied into the JWT as authorization state.
 
-Neon's Admin APIs (`auth.admin.createUser`, `setRole`, `banUser`) require the caller
-to already hold an authenticated session with the `admin` role, and the admin role
-itself can only be granted the first time from the Neon Console. There is no
-service-key path for the app to create the first credential, by design.
+The relevant flow is:
 
-So the first admin is created by a human in the Console, and the app links it.
-
-### Step 1 — create the credential in the Neon Console
-
-Project → **Auth** → **Users** → **Create user**. Set the email and password there.
-
-### Step 2 — link it to the Harmony admin role
-
-```bash
-# Inspect the current state without changing anything
-npm run auth:bootstrap-admin -- someone@harmony.com --check
-
-# Create/repair the users + profiles + auth_identities + admin role records
-npm run auth:bootstrap-admin -- someone@harmony.com
+```text
+/login
+  -> Auth.js Credentials provider
+  -> AuthenticateUser
+  -> CredentialRepository + PasswordHasher
+  -> PostgreSQL
+  -> Auth.js JWT session
+  -> DAL requirePermission(...)
+  -> PostgreSQL RBAC
 ```
 
-The script is idempotent and never touches passwords. It reports exactly what it
-found and what it changed. Re-running after a partial failure is safe — which is
-precisely what the deleted login-page "repair" flow could not do.
+## Environment
 
-### Step 3 — everyone else goes through the backoffice
+Only these authentication/database variables are required:
 
-From `/usuarios`, an admin creates users through `UserAdminService`, which calls
-`auth.admin.createUser` and then writes the matching RBAC records. The bootstrap
-script is only for the first admin and for ops recovery.
-
-## What sign-in is allowed to do
-
-`PostgresAccessRepository.resolveIdentity` links an authenticated subject to a
-**pre-existing** invited user, matched by email, and nothing more. It never creates
-a user, a profile, or a role grant. Denials are explicit:
-
-| Reason | Meaning |
-| --- | --- |
-| `not-invited` | Authenticated, but no `users` row. Nobody granted this person access. |
-| `no-profile` | Invited but never given a profile — provisioning was left half-done. |
-| `subject-mismatch` | The user is already linked to a different credential. Ops must relink. |
-
-`subject-mismatch` is deliberately not self-service. If a credential is recreated,
-run `auth:bootstrap-admin` (or the equivalent ops action) to relink it. A sign-in
-attempt must never be able to rebind an account to a new credential — that is an
-account-takeover primitive, not a recovery flow.
-
-## Debugging a failed sign-in
-
-Work outwards from the credential:
-
-1. **`npm run auth:bootstrap-admin -- <email> --check`** — is there a credential at
-   all, does it have a `credential` provider row (i.e. a password), and does it
-   resolve to an active admin profile?
-2. **Environment pairing.** `NEON_AUTH_BASE_URL` and `DATABASE_URL` must point at the
-   same Neon project *and branch*. When they drift — easy to do with Vercel preview
-   deployments and Neon branching — the user visibly exists in the database while the
-   auth server rejects the password with `INVALID_EMAIL_OR_PASSWORD`, because the
-   credential lives on a different branch. This mismatch looks exactly like a wrong
-   password.
-3. **`NEON_AUTH_COOKIE_SECRET`** must be at least 32 characters, or session cookies
-   never validate.
-4. **Error codes.** `signIn.email` returns a `code` on the error object;
-   `INVALID_EMAIL_OR_PASSWORD`, `USER_BANNED`, `EMAIL_NOT_VERIFIED` and
-   `TOO_MANY_REQUESTS` are mapped to Spanish copy in `login-form.tsx`. Anything else
-   falls back to a generic message — check the Network tab for the real code.
-
-## Database constraints
-
-The access tables rely on uniqueness that was never declared. Apply once per
-environment:
-
-```bash
-npm run db:sql -- drizzle/manual/0001_access_unique_constraints.sql
+```env
+DATABASE_URL=
+AUTH_SECRET=
 ```
 
-Without those indexes, `ON CONFLICT DO NOTHING` in the repositories is a no-op
-guard and duplicate identities/profiles accumulate silently.
+Generate `AUTH_SECRET` with the Auth.js CLI (`npx auth secret`) or another cryptographically secure secret generator. Never commit it.
+
+## Database migration
+
+Before enabling the new authentication flow, apply:
+
+```bash
+npm run db:sql -- drizzle/manual/0002_postgres_auth_credentials.sql
+```
+
+The migration is idempotent. Legacy `neon_auth` and `auth_identities` data are intentionally not dropped during the cutover so rollback remains possible. Runtime authentication does not read either of them.
+
+## First administrator / credential recovery
+
+Bootstrap is an **ops action**, never a public route or Server Action. The script is idempotent and executes the user credential, profile, admin role and audit changes inside one database transaction.
+
+Read-only check:
+
+```bash
+BOOTSTRAP_ADMIN_EMAIL=admin@example.com \
+npm run auth:bootstrap-admin -- --check
+```
+
+Create or reset the first administrator:
+
+```bash
+BOOTSTRAP_ADMIN_EMAIL=admin@example.com \
+BOOTSTRAP_ADMIN_PASSWORD='use-a-strong-password' \
+BOOTSTRAP_ADMIN_NAME='System Administrator' \
+npm run auth:bootstrap-admin
+```
+
+The password is hashed with Argon2id before persistence. Resetting an existing administrator increments `users.session_version`, invalidating previously issued sessions on their next server-side access check.
+
+## Normal user lifecycle
+
+Administrators manage users from `/usuarios`. Creation is a single PostgreSQL transaction covering the internal user, password credential, profile and role grants. Updating active/disabled status also increments `session_version`, so disabling an account revokes existing sessions. Deletion relies on database ownership/cascades and is never split between the browser and an external identity provider.
+
+## Sign-in and authorization rules
+
+A valid password only creates an authenticated Auth.js session. It does not grant permissions. The server resolves the session `user.id` to the app-owned user/profile and checks RBAC in PostgreSQL.
+
+The credential path deliberately returns a generic rejection for unknown emails, incorrect passwords, disabled users and active lockouts. This avoids exposing whether a particular account exists. Five consecutive failures produce a temporary 15-minute credential lock; a successful authentication resets the counter.
+
+Protected Server Actions must call `requirePermission(...)` before performing a mutation. The route proxy is only an early unauthenticated redirect; it is not the authorization boundary.
+
+## Session revocation
+
+Auth.js uses JWT sessions for the Credentials provider. The JWT contains only stable identity/session metadata (`user.id` and `sessionVersion`), not the effective permission set. The DAL compares the token's version with `users.session_version` on server-side access. Incrementing the database value invalidates prior sessions without embedding mutable authorization into the token.
+
+## Legacy cleanup
+
+Do not drop `neon_auth` or `auth_identities` during the initial cutover. Once production has been stable and rollback is no longer required, remove those legacy objects in a separate reviewed migration. No current authentication or RBAC code should depend on them.

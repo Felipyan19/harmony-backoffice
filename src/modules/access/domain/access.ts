@@ -19,6 +19,7 @@ export interface AccessProfile {
   email: string;
   displayName: string;
   status: 'active' | 'disabled';
+  sessionVersion: number;
   roles: RoleCode[];
   permissions: PermissionCode[];
 }
