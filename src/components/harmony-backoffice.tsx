@@ -2,8 +2,8 @@
 
 import { FormEvent, ReactNode, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signOut } from 'next-auth/react';
 import { Bell, ChevronRight, Inbox, LogOut, Users } from 'lucide-react';
+import { authClient } from '@/lib/auth/client';
 import { customers, initialConversations } from '@/lib/mock-data';
 import type { Conversation, ConversationStatus, Customer } from '@/types/domain';
 import { ConversationList, type InboxFilter } from '@/modules/inbox/conversation-list';
@@ -152,7 +152,7 @@ function Sidebar({ view, unreadCount, onViewChange }: { view: View; unreadCount:
             <div className="truncate text-[10px] font-semibold text-white/90">Felipe</div>
             <div className="mt-0.5 text-[8px] text-white/40">Administrador</div>
           </div>
-          <button onClick={() => signOut({ callbackUrl: '/login' })} aria-label="Cerrar sesión" title="Cerrar sesión" className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-white/35 transition hover:bg-white/[0.07] hover:text-white/80">
+          <button onClick={async () => { await authClient.signOut(); window.location.assign('/login'); }} aria-label="Cerrar sesión" title="Cerrar sesión" className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-white/35 transition hover:bg-white/[0.07] hover:text-white/80">
             <LogOut size={13} />
           </button>
         </div>
