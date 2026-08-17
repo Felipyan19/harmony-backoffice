@@ -1,4 +1,4 @@
-import { jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -55,6 +55,45 @@ export const auditLogs = pgTable('audit_logs', {
   action: text('action').notNull(),
   resourceType: text('resource_type').notNull(),
   resourceId: uuid('resource_id'),
+  metadata: jsonb('metadata').default({}).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const customers = pgTable('customers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  phone: text('phone').notNull(),
+  email: text('email'),
+  notes: text('notes'),
+  tags: text('tags').array().default([]).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+});
+
+export const conversations = pgTable('conversations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  customerId: uuid('customer_id').notNull(),
+  channel: text('channel').default('whatsapp').notNull(),
+  externalId: text('external_id'),
+  status: text('status').default('open').notNull(),
+  assignedTo: uuid('assigned_to'),
+  unreadCount: integer('unread_count').default(0).notNull(),
+  lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const messages = pgTable('messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  conversationId: uuid('conversation_id').notNull(),
+  externalId: text('external_id'),
+  direction: text('direction').notNull(),
+  senderType: text('sender_type').notNull(),
+  senderProfileId: uuid('sender_profile_id'),
+  senderName: text('sender_name'),
+  content: text('content').notNull(),
+  status: text('status').default('sent').notNull(),
   metadata: jsonb('metadata').default({}).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
