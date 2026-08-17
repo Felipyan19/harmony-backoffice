@@ -1,5 +1,5 @@
-import { HarmonyBackoffice } from "@/components/harmony-backoffice";
+import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  return <HarmonyBackoffice />;
+  redirect('/conversaciones');
 }
