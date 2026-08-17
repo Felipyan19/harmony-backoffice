@@ -2,9 +2,9 @@ import 'server-only';
 
 import { asc, desc, eq } from 'drizzle-orm';
 import type { ConversationRepository } from '../../application/ports/conversation-repository';
-import type { Conversation, ConversationStatus, Message, SenderType } from '../../domain/conversation';
+import type { Conversation, ConversationLabelColor, ConversationStatus, Message, SenderType } from '../../domain/conversation';
 import { getDrizzleDatabase } from '@/shared/infrastructure/database/drizzle';
-import { conversations, messages } from '@/shared/infrastructure/database/schema';
+import { conversationLabelAssignments, conversationLabels, conversations, messages } from '@/shared/infrastructure/database/schema';
 
 export class NeonConversationRepository implements ConversationRepository {
   async list(): Promise<Conversation[]> {
@@ -44,7 +44,18 @@ export class NeonConversationRepository implements ConversationRepository {
 
   private async mapConversation(row: typeof conversations.$inferSelect): Promise<Conversation> {
     const db = getDrizzleDatabase();
-    const messageRows = await db.select().from(messages).where(eq(messages.conversationId, row.id)).orderBy(asc(messages.createdAt));
+    const [messageRows, labelRows] = await Promise.all([
+      db.select().from(messages).where(eq(messages.conversationId, row.id)).orderBy(asc(messages.createdAt)),
+      db.select({
+        id: conversationLabels.id,
+        name: conversationLabels.name,
+        color: conversationLabels.color,
+      })
+        .from(conversationLabelAssignments)
+        .innerJoin(conversationLabels, eq(conversationLabelAssignments.labelId, conversationLabels.id))
+        .where(eq(conversationLabelAssignments.conversationId, row.id))
+        .orderBy(asc(conversationLabels.name)),
+    ]);
 
     return {
       id: row.id,
@@ -53,6 +64,11 @@ export class NeonConversationRepository implements ConversationRepository {
       status: row.status as ConversationStatus,
       unreadCount: row.unreadCount ?? 0,
       lastMessageAt: row.lastMessageAt?.toISOString() ?? '',
+      labels: labelRows.map((label) => ({
+        id: label.id,
+        name: label.name,
+        color: label.color as ConversationLabelColor,
+      })),
       messages: messageRows.map((message) => ({
         id: message.id,
         conversationId: message.conversationId,
