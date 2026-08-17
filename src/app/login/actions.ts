@@ -1,13 +1,11 @@
 'use server';
 
 import 'server-only';
-import { promisify } from 'node:util';
 import { scrypt, timingSafeEqual } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { z } from 'zod';
 import { auth } from '@/lib/auth/server';
 
-const scryptAsync = promisify(scrypt);
 const BOOTSTRAP_EMAIL = 'igniteapps@gmail.com';
 
 const repairSchema = z.object({
@@ -29,18 +27,36 @@ function getSql() {
   return neon(url);
 }
 
+function deriveLegacyBootstrapKey(password: string, salt: Buffer): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scrypt(
+      password.normalize('NFKC'),
+      salt,
+      64,
+      {
+        N: 16384,
+        r: 16,
+        p: 1,
+        maxmem: 128 * 16384 * 16 * 2,
+      },
+      (error, derivedKey) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(Buffer.from(derivedKey));
+      },
+    );
+  });
+}
+
 async function verifyLegacyBootstrapPassword(password: string, storedHash: string) {
   const [saltHex, keyHex] = storedHash.split(':');
   if (!saltHex || !keyHex || saltHex.length !== 32 || keyHex.length !== 128) return false;
 
   const salt = Buffer.from(saltHex, 'hex');
   const expected = Buffer.from(keyHex, 'hex');
-  const derived = (await scryptAsync(password.normalize('NFKC'), salt, 64, {
-    N: 16384,
-    r: 16,
-    p: 1,
-    maxmem: 128 * 16384 * 16 * 2,
-  })) as Buffer;
+  const derived = await deriveLegacyBootstrapKey(password, salt);
 
   return expected.length === derived.length && timingSafeEqual(expected, derived);
 }
