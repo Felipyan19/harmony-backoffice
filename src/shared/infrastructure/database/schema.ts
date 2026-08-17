@@ -87,6 +87,14 @@ export const customers = pgTable('customers', {
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
 });
 
+export const conversationLabels = pgTable('conversation_labels', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  color: text('color').default('zinc').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [uniqueIndex('conversation_labels_name_unique_idx').on(sql`lower(${table.name})`)]);
+
 export const conversations = pgTable('conversations', {
   id: uuid('id').defaultRandom().primaryKey(),
   customerId: uuid('customer_id').notNull(),
@@ -99,6 +107,12 @@ export const conversations = pgTable('conversations', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const conversationLabelAssignments = pgTable('conversation_label_assignments', {
+  conversationId: uuid('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  labelId: uuid('label_id').notNull().references(() => conversationLabels.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [primaryKey({ columns: [table.conversationId, table.labelId] })]);
 
 export const messages = pgTable('messages', {
   id: uuid('id').defaultRandom().primaryKey(),
