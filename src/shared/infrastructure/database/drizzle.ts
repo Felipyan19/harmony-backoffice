@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema';
 
+// Provider-agnostic PostgreSQL adapter. Runtime depends only on DATABASE_URL.
 let pool: Pool | null = null;
 let database: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
