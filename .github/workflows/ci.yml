@@ -36,4 +36,8 @@ jobs:
         run: npm test
 
       - name: Build
+        env:
+          NEON_AUTH_BASE_URL: https://example.invalid/auth
+          NEON_AUTH_COOKIE_SECRET: ci-only-cookie-secret-32-characters-minimum
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: npm run build
