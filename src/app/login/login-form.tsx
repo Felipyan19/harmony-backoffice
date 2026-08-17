@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LockKeyhole, Mail } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
+import { repairBootstrapAdminAction } from './actions';
 
 export function LoginForm() {
   const router = useRouter();
@@ -15,20 +16,32 @@ export function LoginForm() {
     setError('');
     setLoading(true);
 
-    const form = new FormData(event.currentTarget);
-    const email = String(form.get('email') ?? '').trim().toLowerCase();
-    const password = String(form.get('password') ?? '');
-    const result = await authClient.signIn.email({ email, password });
+    try {
+      const form = new FormData(event.currentTarget);
+      const email = String(form.get('email') ?? '').trim().toLowerCase();
+      const password = String(form.get('password') ?? '');
 
-    setLoading(false);
+      let result = await authClient.signIn.email({ email, password });
 
-    if (result.error) {
-      setError('Correo o contraseña incorrectos.');
-      return;
+      if (result.error) {
+        const repair = await repairBootstrapAdminAction({ email, password });
+        if (repair.repaired) {
+          result = await authClient.signIn.email({ email, password });
+        }
+      }
+
+      if (result.error) {
+        setError('Correo o contraseña incorrectos.');
+        return;
+      }
+
+      router.replace('/conversaciones');
+      router.refresh();
+    } catch {
+      setError('No fue posible iniciar sesión. Intenta nuevamente.');
+    } finally {
+      setLoading(false);
     }
-
-    router.replace('/conversaciones');
-    router.refresh();
   }
 
   return (
