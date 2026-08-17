@@ -7,6 +7,10 @@ import { auditLogs, authIdentities, profileRoles, profiles, roles, users } from 
 import type { CreateInternalUserInput, UpdateInternalUserInput, UserRepository } from '../../application/ports/user-repository';
 import type { BackofficeUser, RoleOption } from '../../domain/user';
 
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: string }).code === '23505';
+}
+
 export class PostgresUserRepository implements UserRepository {
   async list(): Promise<BackofficeUser[]> {
     const db = getDrizzleDatabase();
@@ -51,7 +55,16 @@ export class PostgresUserRepository implements UserRepository {
 
   async createFromIdentity(input: CreateInternalUserInput): Promise<BackofficeUser> {
     const db = getDrizzleDatabase();
-    const [createdUser] = await db.insert(users).values({ email: input.email.toLowerCase() }).returning({ id: users.id });
+
+    // users_email_lower_key decides the race; a pre-check could not.
+    const [createdUser] = await db
+      .insert(users)
+      .values({ email: input.email.toLowerCase() })
+      .returning({ id: users.id })
+      .catch((error: unknown) => {
+        if (isUniqueViolation(error)) throw new Error('Ya existe un usuario con ese correo');
+        throw error;
+      });
     if (!createdUser) throw new Error('No se pudo crear el usuario interno');
 
     await db.insert(authIdentities).values({ userId: createdUser.id, provider: 'neon-auth', subject: input.authSubject });

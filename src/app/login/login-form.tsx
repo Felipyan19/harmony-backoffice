@@ -13,6 +13,17 @@ const MESSAGES: Record<string, string> = {
 };
 
 const FALLBACK_MESSAGE = 'No fue posible iniciar sesión. Intenta nuevamente.';
+const NETWORK_MESSAGE = 'No pudimos contactar el servicio de autenticación. Revisa tu conexión e intenta de nuevo.';
+
+/**
+ * Never report a transport failure as a credential failure: that mislabelling is
+ * what makes a misconfigured environment look like a forgotten password.
+ */
+function messageFor(code: string | undefined) {
+  if (!code) return FALLBACK_MESSAGE;
+  if (code.startsWith('NETWORK_')) return NETWORK_MESSAGE;
+  return MESSAGES[code] ?? FALLBACK_MESSAGE;
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -32,7 +43,7 @@ export function LoginForm() {
       const { error: signInError } = await authClient.signIn.email({ email, password });
 
       if (signInError) {
-        setError(MESSAGES[signInError.code ?? ''] ?? MESSAGES.INVALID_EMAIL_OR_PASSWORD);
+        setError(messageFor(signInError.code));
         return;
       }
 
