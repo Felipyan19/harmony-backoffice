@@ -1,0 +1,1 @@
+User administration keeps authentication identity in Neon Auth and business authorization in PostgreSQL. Server Actions always re-check permissions before mutations. The module supports create, edit profile, enable/disable, role assignment and deletion, with self-disable/self-delete protection.
