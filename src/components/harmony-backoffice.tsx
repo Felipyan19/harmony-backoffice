@@ -2,7 +2,7 @@
 
 import { FormEvent, ReactNode, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, ChevronRight, Inbox, LogOut, Users } from 'lucide-react';
+import { Bell, ChevronRight, Inbox, LogOut, ShieldCheck, Users } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
 import { customers, initialConversations } from '@/lib/mock-data';
 import type { Conversation, ConversationStatus, Customer } from '@/types/domain';
@@ -88,7 +88,7 @@ export function HarmonyBackoffice({ initialView = 'conversations' }: { initialVi
 
   return (
     <main className="flex min-h-screen bg-[#f4f5f2] text-zinc-900">
-      <Sidebar view={view} unreadCount={unreadCount} onViewChange={navigate} />
+      <Sidebar view={view} unreadCount={unreadCount} onViewChange={navigate} onUsers={() => router.push('/usuarios')} />
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-20 shrink-0 items-center justify-between border-b border-zinc-200/80 bg-white/95 px-5 backdrop-blur md:px-7">
           <div>
@@ -115,7 +115,7 @@ export function HarmonyBackoffice({ initialView = 'conversations' }: { initialVi
   );
 }
 
-function Sidebar({ view, unreadCount, onViewChange }: { view: View; unreadCount: number; onViewChange: (view: View) => void }) {
+function Sidebar({ view, unreadCount, onViewChange, onUsers }: { view: View; unreadCount: number; onViewChange: (view: View) => void; onUsers: () => void }) {
   return (
     <aside className="hidden min-h-screen w-[220px] shrink-0 flex-col border-r border-white/[0.07] bg-harmony-900 text-white lg:flex">
       <div className="flex h-[72px] items-center gap-3 border-b border-white/[0.07] px-4">
@@ -131,45 +131,23 @@ function Sidebar({ view, unreadCount, onViewChange }: { view: View; unreadCount:
         <div className="space-y-1">
           <SidebarButton active={view === 'conversations'} icon={<Inbox size={17} />} label="Conversaciones" badge={unreadCount || undefined} onClick={() => onViewChange('conversations')} />
           <SidebarButton active={view === 'customers'} icon={<Users size={17} />} label="Clientes" onClick={() => onViewChange('customers')} />
+          <SidebarButton active={false} icon={<ShieldCheck size={17} />} label="Usuarios" onClick={onUsers} />
         </div>
       </nav>
 
       <div className="mt-auto border-t border-white/[0.07] px-2.5 pb-2.5 pt-3">
         <div className="mb-2 flex items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-white/80">
-          <span className="relative flex h-2 w-2 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-30" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[10px] font-semibold text-white/90">Harmony IA</div>
-            <div className="mt-0.5 text-[8px] text-white/40">Agente conectado</div>
-          </div>
+          <span className="relative flex h-2 w-2 shrink-0"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-30" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" /></span>
+          <div className="min-w-0 flex-1"><div className="truncate text-[10px] font-semibold text-white/90">Harmony IA</div><div className="mt-0.5 text-[8px] text-white/40">Agente conectado</div></div>
         </div>
-
-        <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.035] px-2.5 py-2.5">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.08] text-[9px] font-semibold text-white">FH</div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[10px] font-semibold text-white/90">Felipe</div>
-            <div className="mt-0.5 text-[8px] text-white/40">Administrador</div>
-          </div>
-          <button onClick={async () => { await authClient.signOut(); window.location.assign('/login'); }} aria-label="Cerrar sesión" title="Cerrar sesión" className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-white/35 transition hover:bg-white/[0.07] hover:text-white/80">
-            <LogOut size={13} />
-          </button>
-        </div>
+        <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.035] px-2.5 py-2.5"><div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.08] text-[9px] font-semibold text-white">FH</div><div className="min-w-0 flex-1"><div className="truncate text-[10px] font-semibold text-white/90">Felipe</div><div className="mt-0.5 text-[8px] text-white/40">Administrador</div></div><button onClick={async () => { await authClient.signOut(); window.location.assign('/login'); }} aria-label="Cerrar sesión" title="Cerrar sesión" className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-white/35 transition hover:bg-white/[0.07] hover:text-white/80"><LogOut size={13} /></button></div>
       </div>
     </aside>
   );
 }
 
 function SidebarButton({ active, icon, label, badge, onClick }: { active: boolean; icon: ReactNode; label: string; badge?: number; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className={`relative flex h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[11px] font-medium transition ${active ? 'bg-white/[0.09] text-white' : 'text-white/55 hover:bg-white/[0.05] hover:text-white/90'}`}>
-      {active ? <span className="absolute inset-y-2 left-0 w-0.5 rounded-r-full bg-gold-400" /> : null}
-      <span className={active ? 'text-gold-300' : 'text-white/45'}>{icon}</span>
-      <span className="flex-1 truncate">{label}</span>
-      {badge ? <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-gold-500 px-1.5 text-[7px] font-bold text-harmony-950">{badge}</span> : null}
-    </button>
-  );
+  return <button onClick={onClick} className={`relative flex h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[11px] font-medium transition ${active ? 'bg-white/[0.09] text-white' : 'text-white/55 hover:bg-white/[0.05] hover:text-white/90'}`}>{active ? <span className="absolute inset-y-2 left-0 w-0.5 rounded-r-full bg-gold-400" /> : null}<span className={active ? 'text-gold-300' : 'text-white/45'}>{icon}</span><span className="flex-1 truncate">{label}</span>{badge ? <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-gold-500 px-1.5 text-[7px] font-bold text-harmony-950">{badge}</span> : null}</button>;
 }
 
 function CustomersView({ customers: rows, selectedCustomerId, conversations, query, onQueryChange, onSelect }: { customers: Customer[]; selectedCustomerId: string; conversations: Conversation[]; query: string; onQueryChange: (value: string) => void; onSelect: (customer: Customer) => void }) {
