@@ -26,19 +26,22 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const notice = reason ? DENIAL_MESSAGES[reason] : undefined;
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#f4f5f2] px-4 py-10">
-      <section className="w-full max-w-[420px] rounded-[28px] border border-zinc-200/80 bg-white p-7 shadow-[0_24px_70px_rgba(24,60,43,0.10)] sm:p-9">
-        <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gold-500 text-sm font-bold text-harmony-900">H</div>
+    <main className="relative grid min-h-[100dvh] place-items-center overflow-hidden bg-[#f4f5f2] px-3 py-4 sm:px-6 sm:py-10">
+      <div className="pointer-events-none absolute -left-24 top-[-7rem] h-64 w-64 rounded-full bg-harmony-100/50 blur-3xl sm:h-80 sm:w-80" />
+      <div className="pointer-events-none absolute -bottom-32 -right-24 h-72 w-72 rounded-full bg-gold-100/40 blur-3xl sm:h-96 sm:w-96" />
+
+      <section className="relative w-full max-w-[440px] rounded-[24px] border border-zinc-200/80 bg-white/95 p-5 shadow-[0_24px_70px_rgba(24,60,43,0.10)] backdrop-blur sm:rounded-[28px] sm:p-9">
+        <div className="flex items-center gap-3.5">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gold-500 text-sm font-bold text-harmony-900 shadow-sm">H</div>
           <div>
-            <div className="text-lg font-semibold tracking-[-0.03em] text-harmony-900">Harmony</div>
-            <div className="text-[10px] text-zinc-400">Backoffice</div>
+            <div className="text-xl font-semibold tracking-[-0.03em] text-harmony-900">Harmony</div>
+            <div className="mt-0.5 text-[11px] text-zinc-400">Backoffice</div>
           </div>
         </div>
 
-        <div className="mt-8">
-          <h1 className="text-2xl font-semibold tracking-[-0.04em] text-zinc-900">Bienvenido</h1>
-          <p className="mt-2 text-[11px] leading-5 text-zinc-500">Ingresa con tu cuenta de Harmony.</p>
+        <div className="mt-7 sm:mt-9">
+          <h1 className="text-[28px] font-semibold tracking-[-0.04em] text-zinc-900 sm:text-3xl">Bienvenido</h1>
+          <p className="mt-2 text-sm leading-6 text-zinc-500 sm:text-[13px]">Ingresa con tu cuenta autorizada de Harmony.</p>
         </div>
 
         {notice ? <NoAccessNotice message={notice} signedIn={access.state !== 'anonymous'} /> : null}
