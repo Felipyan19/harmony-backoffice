@@ -1,6 +1,6 @@
 // Applies a .sql file through the Neon HTTP driver.
 //
-//   node --env-file=.env scripts/run-sql.mjs drizzle/manual/0001_access_unique_constraints.sql
+//   npm run db:sql -- drizzle/manual/0001_access_unique_constraints.sql
 //
 // The HTTP driver accepts one statement per round trip, so the file is split on
 // semicolons. Keep statements single and idempotent: no DO blocks, no functions.
@@ -11,12 +11,12 @@ import { neon } from '@neondatabase/serverless';
 const [file] = process.argv.slice(2);
 
 if (!file) {
-  console.error('Usage: node --env-file=.env scripts/run-sql.mjs <file.sql>');
+  console.error('Usage: npm run db:sql -- <file.sql>');
   process.exit(1);
 }
 
 if (!process.env.DATABASE_URL) {
-  console.error('DATABASE_URL is not set. Pass --env-file=.env or export it.');
+  console.error('DATABASE_URL is not set. Add it to .env or export it before running.');
   process.exit(1);
 }
 

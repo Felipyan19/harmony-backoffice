@@ -10,8 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
-    "db:sql": "node --env-file=.env scripts/run-sql.mjs",
-    "auth:bootstrap-admin": "node --env-file=.env scripts/bootstrap-admin.mjs"
+    "db:sql": "node --env-file-if-exists=.env scripts/run-sql.mjs",
+    "auth:bootstrap-admin": "node --env-file-if-exists=.env scripts/bootstrap-admin.mjs"
   },
   "dependencies": {
     "@neondatabase/auth": "0.4.2-beta",

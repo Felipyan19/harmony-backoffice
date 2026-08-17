@@ -1,7 +1,7 @@
 // Links an existing Neon Auth credential to the Harmony admin RBAC records.
 //
-//   node --env-file=.env scripts/bootstrap-admin.mjs someone@harmony.com --check
-//   node --env-file=.env scripts/bootstrap-admin.mjs someone@harmony.com
+//   npm run auth:bootstrap-admin -- someone@harmony.com --check
+//   npm run auth:bootstrap-admin -- someone@harmony.com
 //
 // The credential itself (email + password) is created in the Neon Console under
 // Auth -> Users. Neon's Admin API requires an already-authenticated admin
@@ -20,12 +20,12 @@ const overrideName = nameFlag >= 0 ? args[nameFlag + 1] : undefined;
 const email = args.find((arg) => !arg.startsWith('--') && arg !== overrideName)?.trim().toLowerCase();
 
 if (!email || !email.includes('@')) {
-  console.error('Usage: node --env-file=.env scripts/bootstrap-admin.mjs <email> [--check] [--name "Display Name"]');
+  console.error('Usage: npm run auth:bootstrap-admin -- <email> [--check] [--name "Display Name"]');
   process.exit(1);
 }
 
 if (!process.env.DATABASE_URL) {
-  console.error('DATABASE_URL is not set. Pass --env-file=.env or export it.');
+  console.error('DATABASE_URL is not set. Add it to .env or export it before running.');
   process.exit(1);
 }
 
