@@ -1,37 +1,61 @@
 import 'server-only';
 
 import { and, eq, sql } from 'drizzle-orm';
-import type { AccessRepository, EnsureIdentityInput } from '../../application/ports/access-repository';
+import type {
+  AccessRepository,
+  AccessResolution,
+  LinkIdentityInput,
+} from '../../application/ports/access-repository';
 import type { AccessProfile, PermissionCode, RoleCode } from '../../domain/access';
 import { getDrizzleDatabase } from '@/shared/infrastructure/database/drizzle';
-import { authIdentities, permissions, profileRoles, profiles, rolePermissions, roles, users } from '@/shared/infrastructure/database/schema';
+import { auditLogs, authIdentities, permissions, profileRoles, profiles, rolePermissions, roles, users } from '@/shared/infrastructure/database/schema';
 
 export class PostgresAccessRepository implements AccessRepository {
-  async ensureIdentity(input: EnsureIdentityInput): Promise<AccessProfile> {
-    const existing = await this.getByAuthIdentity(input.provider, input.subject);
-    if (existing) return existing;
+  async resolveIdentity(input: LinkIdentityInput): Promise<AccessResolution> {
+    const linked = await this.getByAuthIdentity(input.provider, input.subject);
+    if (linked) return { granted: true, profile: linked };
 
     const db = getDrizzleDatabase();
     const email = input.email.trim().toLowerCase();
-    const [existingUser] = await db.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${email}`).limit(1);
-    let userId = existingUser?.id;
 
-    if (!userId) {
-      const [created] = await db.insert(users).values({ email }).returning({ id: users.id });
-      userId = created?.id;
-    }
-    if (!userId) throw new Error('Unable to synchronize authenticated user');
+    // Only a user already invited from the backoffice (or seeded by the bootstrap
+    // script) may be linked. A valid session alone grants nothing.
+    const [invited] = await db
+      .select({ userId: users.id, profileId: profiles.id })
+      .from(users)
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .where(sql`lower(${users.email}) = ${email}`)
+      .limit(1);
 
-    await db.insert(authIdentities).values({ userId, provider: input.provider, subject: input.subject }).onConflictDoNothing();
-    await db.insert(profiles).values({ userId, displayName: input.displayName, status: 'active' }).onConflictDoNothing();
+    if (!invited) return { granted: false, reason: 'not-invited' };
+    if (!invited.profileId) return { granted: false, reason: 'no-profile' };
 
-    const [profile] = await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.userId, userId)).limit(1);
-    const [agentRole] = await db.select({ id: roles.id }).from(roles).where(eq(roles.code, 'agent')).limit(1);
-    if (profile && agentRole) await db.insert(profileRoles).values({ profileId: profile.id, roleId: agentRole.id }).onConflictDoNothing();
+    // The invited user already points at another credential. Relinking is an
+    // explicit ops action, never something a sign-in attempt may perform.
+    const [claimed] = await db
+      .select({ subject: authIdentities.subject })
+      .from(authIdentities)
+      .where(and(eq(authIdentities.userId, invited.userId), eq(authIdentities.provider, input.provider)))
+      .limit(1);
 
-    const accessProfile = await this.getByAuthIdentity(input.provider, input.subject);
-    if (!accessProfile) throw new Error('Unable to synchronize authenticated profile');
-    return accessProfile;
+    if (claimed && claimed.subject !== input.subject) return { granted: false, reason: 'subject-mismatch' };
+
+    await db
+      .insert(authIdentities)
+      .values({ userId: invited.userId, provider: input.provider, subject: input.subject })
+      .onConflictDoNothing({ target: [authIdentities.provider, authIdentities.subject] });
+
+    await db.insert(auditLogs).values({
+      actorProfileId: invited.profileId,
+      action: 'access.identity_linked',
+      resourceType: 'auth',
+      resourceId: invited.userId,
+      metadata: { provider: input.provider, email },
+    });
+
+    const profile = await this.getByAuthIdentity(input.provider, input.subject);
+    if (!profile) return { granted: false, reason: 'no-profile' };
+    return { granted: true, profile };
   }
 
   async getByAuthIdentity(provider: string, subject: string): Promise<AccessProfile | null> {

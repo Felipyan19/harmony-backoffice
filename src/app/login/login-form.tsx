@@ -4,10 +4,15 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LockKeyhole, Mail } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
-import {
-  finalizeBootstrapAdminRepairAction,
-  prepareBootstrapAdminRepairAction,
-} from './actions';
+
+const MESSAGES: Record<string, string> = {
+  INVALID_EMAIL_OR_PASSWORD: 'Correo o contraseña incorrectos.',
+  USER_BANNED: 'Tu acceso está deshabilitado. Contacta a un administrador.',
+  EMAIL_NOT_VERIFIED: 'Debes verificar tu correo antes de ingresar.',
+  TOO_MANY_REQUESTS: 'Demasiados intentos. Espera unos minutos.',
+};
+
+const FALLBACK_MESSAGE = 'No fue posible iniciar sesión. Intenta nuevamente.';
 
 export function LoginForm() {
   const router = useRouter();
@@ -24,40 +29,17 @@ export function LoginForm() {
       const email = String(form.get('email') ?? '').trim().toLowerCase();
       const password = String(form.get('password') ?? '');
 
-      let result = await authClient.signIn.email({ email, password });
+      const { error: signInError } = await authClient.signIn.email({ email, password });
 
-      if (result.error) {
-        const repair = await prepareBootstrapAdminRepairAction({ email, password });
-
-        if (repair.prepared) {
-          const signup = await authClient.signUp.email({
-            email,
-            password,
-            name: 'IgniteApps',
-          });
-
-          if (signup.error) {
-            throw new Error('No se pudo recrear la identidad de acceso');
-          }
-
-          const finalized = await finalizeBootstrapAdminRepairAction({ email });
-          if (!finalized.finalized) {
-            throw new Error('No se pudo enlazar la identidad nueva');
-          }
-
-          result = await authClient.signIn.email({ email, password });
-        }
-      }
-
-      if (result.error) {
-        setError('Correo o contraseña incorrectos.');
+      if (signInError) {
+        setError(MESSAGES[signInError.code ?? ''] ?? MESSAGES.INVALID_EMAIL_OR_PASSWORD);
         return;
       }
 
       router.replace('/conversaciones');
       router.refresh();
     } catch {
-      setError('No fue posible iniciar sesión. Intenta nuevamente.');
+      setError(FALLBACK_MESSAGE);
     } finally {
       setLoading(false);
     }
