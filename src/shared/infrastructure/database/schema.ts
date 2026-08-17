@@ -1,4 +1,4 @@
-import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const users = pgTable('users', {
@@ -112,7 +112,10 @@ export const conversationLabelAssignments = pgTable('conversation_label_assignme
   conversationId: uuid('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
   labelId: uuid('label_id').notNull().references(() => conversationLabels.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [primaryKey({ columns: [table.conversationId, table.labelId] })]);
+}, (table) => [
+  primaryKey({ columns: [table.conversationId, table.labelId] }),
+  index('conversation_label_assignments_label_id_idx').on(table.labelId, table.conversationId),
+]);
 
 export const messages = pgTable('messages', {
   id: uuid('id').defaultRandom().primaryKey(),
