@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import { ShieldAlert } from 'lucide-react';
-import { authClient } from '@/lib/auth/client';
 
 export function NoAccessNotice({ message, signedIn }: { message: string; signedIn: boolean }) {
   const router = useRouter();
@@ -12,7 +12,7 @@ export function NoAccessNotice({ message, signedIn }: { message: string; signedI
   async function handleSignOut() {
     setLeaving(true);
     try {
-      await authClient.signOut();
+      await signOut({ redirect: false });
       router.replace('/login');
       router.refresh();
     } finally {
