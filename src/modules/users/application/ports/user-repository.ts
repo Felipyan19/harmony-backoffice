@@ -14,6 +14,7 @@ export interface UpdateInternalUserInput {
   phone?: string;
   status: 'active' | 'disabled';
   roles: RoleCode[];
+  actorProfileId?: string;
 }
 
 export interface UserRepository {
