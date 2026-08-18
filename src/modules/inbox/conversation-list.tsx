@@ -1,6 +1,6 @@
-import { Check } from 'lucide-react';
+import { Check, Settings2 } from 'lucide-react';
 import type { Conversation, ConversationLabel, ConversationStatus, Customer } from '@/types/domain';
-import { Avatar, EmptyState, Panel, SearchInput, StatusBadge } from '@/modules/shared/ui';
+import { Avatar, EmptyState, IconButton, Panel, SearchInput, StatusBadge } from '@/modules/shared/ui';
 import { ConversationLabelBadge, ConversationLabelBulkBar, ConversationLabelFilterMenu } from './conversation-labels';
 
 export type InboxFilter = 'all' | ConversationStatus;
@@ -16,7 +16,7 @@ export function ConversationList({
   conversations, customers, labels, labelCounts, selectedId, query, filter, selectedLabelIds,
   onQueryChange, onFilterChange, onToggleLabelFilter, onClearLabelFilter, onSelect,
   selectionMode, selectedConversationIds, onToggleSelectionMode, onToggleConversationSelection, onClearConversationSelection,
-  onBulkApplyLabel, onBulkRemoveLabel,
+  onBulkApplyLabel, onBulkRemoveLabel, onManageLabels,
 }: {
   conversations: Conversation[];
   customers: Customer[];
@@ -38,20 +38,22 @@ export function ConversationList({
   onClearConversationSelection: () => void;
   onBulkApplyLabel: (labelId: string) => void;
   onBulkRemoveLabel: (labelId: string) => void;
+  onManageLabels: () => void;
 }) {
   return (
     <Panel className="flex min-h-[540px] flex-col overflow-hidden xl:min-h-0">
       <div className="border-b border-neutral/10 p-3.5">
         <SearchInput value={query} onChange={onQueryChange} placeholder="Buscar cliente o mensaje..." />
-        <div className="mt-3 grid grid-cols-4 gap-1 rounded-lg bg-neutral/8 p-1">
+        <div className="mt-3 flex gap-1 rounded-lg bg-neutral/8 p-1">
           {(['all', 'open', 'pending', 'resolved'] as InboxFilter[]).map((item) => (
-            <button key={item} onClick={() => onFilterChange(item)} className={`rounded-md px-2 py-2 text-sm font-medium transition ${filter === item ? 'bg-white text-primary ring-1 ring-neutral/12' : 'text-neutral/60 hover:text-neutral'}`}>
+            <button key={item} onClick={() => onFilterChange(item)} className={`flex-1 whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium transition ${filter === item ? 'bg-white text-primary ring-1 ring-neutral/12' : 'text-neutral/60 hover:text-neutral'}`}>
               {filterLabel[item]}
             </button>
           ))}
         </div>
         <div className="mt-2.5 flex items-center gap-2">
           <ConversationLabelFilterMenu labels={labels} counts={labelCounts} selectedLabelIds={selectedLabelIds} onToggle={onToggleLabelFilter} onClear={onClearLabelFilter} />
+          <IconButton type="button" onClick={onManageLabels} variant="neutral" aria-label="Gestionar etiquetas" title="Gestionar etiquetas"><Settings2 size={15} /></IconButton>
           <button type="button" onClick={onToggleSelectionMode} className={`h-10 shrink-0 rounded-md border px-3 text-sm font-medium transition ${selectionMode ? 'border-primary/40 bg-primary/8 text-primary' : 'border-neutral/15 bg-white text-neutral/70 hover:bg-neutral/5'}`}>
             {selectionMode ? 'Cancelar' : 'Seleccionar'}
           </button>

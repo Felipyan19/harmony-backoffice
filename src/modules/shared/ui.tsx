@@ -33,7 +33,7 @@ export function StatusBadge({ status }: { status: ConversationStatus }) {
 
 export function SearchInput({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
   return (
-    <label className="flex h-11 items-center gap-2.5 rounded-md border border-neutral/15 bg-neutral/4 px-3.5 text-neutral/40 transition focus-within:border-primary/40 focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/12">
+    <label className="flex h-10 items-center gap-2.5 rounded-md border border-neutral/15 bg-neutral/4 px-3.5 text-neutral/40 transition focus-within:border-primary/40 focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/12">
       <Search size={16} />
       <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent text-base text-neutral outline-none placeholder:text-neutral/40" />
     </label>

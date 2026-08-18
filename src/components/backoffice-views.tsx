@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import { customers } from '@/lib/mock-data';
-import type { Conversation, ConversationLabel, ConversationStatus, Customer } from '@/types/domain';
+import type { Conversation, ConversationLabel, ConversationLabelColor, ConversationStatus, Customer } from '@/types/domain';
 import {
   findConversationLabelByName,
   matchesConversationLabels,
@@ -14,6 +14,7 @@ import {
 import { ConversationList, type InboxFilter } from '@/modules/inbox/conversation-list';
 import { ChatPanel } from '@/modules/inbox/chat-panel';
 import { CustomerDetails } from '@/modules/customers/customer-details';
+import { LabelManagerDialog } from '@/modules/inbox/label-manager';
 import { Avatar, Panel, SearchInput, Tag } from '@/modules/shared/ui';
 import { useBackofficeState } from './backoffice-context';
 
@@ -24,7 +25,7 @@ export function ConversationsPageContent() {
     labels, setLabels,
     selectedConversationId, setSelectedConversationId,
     setSelectedCustomerId,
-    selectedLabelIds, toggleLabelFilter, clearLabelFilter,
+    selectedLabelIds, setSelectedLabelIds, toggleLabelFilter, clearLabelFilter,
     labelCounts,
   } = useBackofficeState();
 
@@ -33,6 +34,7 @@ export function ConversationsPageContent() {
   const [draft, setDraft] = useState('');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedConversationIds, setSelectedConversationIds] = useState<Set<string>>(new Set());
+  const [labelManagerOpen, setLabelManagerOpen] = useState(false);
 
   const selectedConversation = conversations.find((item) => item.id === selectedConversationId) ?? conversations[0];
   const selectedCustomer = customers.find((item) => item.id === selectedConversation.customerId) ?? customers[0];
@@ -152,6 +154,38 @@ export function ConversationsPageContent() {
     }));
   }
 
+  function createLabelGlobally(name: string) {
+    const normalizedName = normalizeConversationLabelName(name);
+    if (!normalizedName || findConversationLabelByName(labels, normalizedName)) return;
+    const created: ConversationLabel = { id: `lbl_${Date.now().toString(36)}`, name: normalizedName, color: nextConversationLabelColor(labels.length) };
+    setLabels((current) => [...current, created]);
+  }
+
+  function renameLabel(labelId: string, name: string) {
+    setLabels((current) => current.map((label) => label.id === labelId ? { ...label, name } : label));
+    setConversations((current) => current.map((conversation) => ({
+      ...conversation,
+      labels: conversation.labels.map((label) => label.id === labelId ? { ...label, name } : label),
+    })));
+  }
+
+  function recolorLabel(labelId: string, color: ConversationLabelColor) {
+    setLabels((current) => current.map((label) => label.id === labelId ? { ...label, color } : label));
+    setConversations((current) => current.map((conversation) => ({
+      ...conversation,
+      labels: conversation.labels.map((label) => label.id === labelId ? { ...label, color } : label),
+    })));
+  }
+
+  function deleteLabel(labelId: string) {
+    setLabels((current) => current.filter((label) => label.id !== labelId));
+    setConversations((current) => current.map((conversation) => ({
+      ...conversation,
+      labels: conversation.labels.filter((label) => label.id !== labelId),
+    })));
+    setSelectedLabelIds((current) => current.filter((id) => id !== labelId));
+  }
+
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 xl:grid-cols-[330px_minmax(520px,1fr)_300px] 2xl:grid-cols-[360px_minmax(620px,1fr)_320px]">
       <ConversationList
@@ -175,9 +209,22 @@ export function ConversationsPageContent() {
         onClearConversationSelection={clearConversationSelection}
         onBulkApplyLabel={bulkApplyLabel}
         onBulkRemoveLabel={bulkRemoveLabel}
+        onManageLabels={() => setLabelManagerOpen(true)}
       />
       <ChatPanel conversation={selectedConversation} customer={selectedCustomer} labels={labels} draft={draft} onDraftChange={setDraft} onSend={sendMessage} onStatusChange={changeStatus} onToggleLabel={toggleConversationLabel} onCreateLabel={createConversationLabel} />
       <CustomerDetails customer={selectedCustomer} conversation={selectedConversation} onOpenCustomers={() => router.push('/clientes')} />
+
+      {labelManagerOpen ? (
+        <LabelManagerDialog
+          labels={labels}
+          counts={labelCounts}
+          onClose={() => setLabelManagerOpen(false)}
+          onRename={renameLabel}
+          onRecolor={recolorLabel}
+          onDelete={deleteLabel}
+          onCreate={createLabelGlobally}
+        />
+      ) : null}
     </div>
   );
 }

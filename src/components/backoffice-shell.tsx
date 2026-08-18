@@ -1,19 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { ReactNode, useState } from 'react';
-import { Bell, Inbox, LogOut, Settings2, ShieldCheck, Tags, Users } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { ReactNode } from 'react';
+import { Bell, Inbox, LogOut, ShieldCheck, Users } from 'lucide-react';
 import { BrandIcon } from '@/components/brand-icon';
 import { authClient } from '@/lib/auth/client';
-import { ConversationLabelDot } from '@/modules/inbox/conversation-labels';
-import { LabelManagerDialog } from '@/modules/inbox/label-manager';
-import type { ConversationLabel, ConversationLabelColor } from '@/types/domain';
-import {
-  findConversationLabelByName,
-  nextConversationLabelColor,
-  normalizeConversationLabelName,
-} from '@/modules/conversations/domain/conversation-labels';
 import { useBackofficeState } from './backoffice-context';
 
 const NAV_ITEMS = [
@@ -32,58 +24,13 @@ type ShellUser = { displayName: string; roleLabel: string; initials: string };
 
 export function BackofficeShell({ children, user }: { children: ReactNode; user: ShellUser }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [labelManagerOpen, setLabelManagerOpen] = useState(false);
-  const {
-    setConversations,
-    labels, setLabels,
-    selectedLabelIds, setSelectedLabelIds,
-    toggleLabelFilter,
-    labelCounts, unreadCount, pendingCount,
-  } = useBackofficeState();
-
-  function handleToggleLabelFilter(labelId: string) {
-    if (pathname !== '/conversaciones') router.push('/conversaciones');
-    toggleLabelFilter(labelId);
-  }
-
-  function createLabelGlobally(name: string) {
-    const normalizedName = normalizeConversationLabelName(name);
-    if (!normalizedName || findConversationLabelByName(labels, normalizedName)) return;
-    const created: ConversationLabel = { id: `lbl_${Date.now().toString(36)}`, name: normalizedName, color: nextConversationLabelColor(labels.length) };
-    setLabels((current) => [...current, created]);
-  }
-
-  function renameLabel(labelId: string, name: string) {
-    setLabels((current) => current.map((label) => label.id === labelId ? { ...label, name } : label));
-    setConversations((current) => current.map((conversation) => ({
-      ...conversation,
-      labels: conversation.labels.map((label) => label.id === labelId ? { ...label, name } : label),
-    })));
-  }
-
-  function recolorLabel(labelId: string, color: ConversationLabelColor) {
-    setLabels((current) => current.map((label) => label.id === labelId ? { ...label, color } : label));
-    setConversations((current) => current.map((conversation) => ({
-      ...conversation,
-      labels: conversation.labels.map((label) => label.id === labelId ? { ...label, color } : label),
-    })));
-  }
-
-  function deleteLabel(labelId: string) {
-    setLabels((current) => current.filter((label) => label.id !== labelId));
-    setConversations((current) => current.map((conversation) => ({
-      ...conversation,
-      labels: conversation.labels.filter((label) => label.id !== labelId),
-    })));
-    setSelectedLabelIds((current) => current.filter((id) => id !== labelId));
-  }
+  const { unreadCount, pendingCount } = useBackofficeState();
 
   const pageMeta = PAGE_META[pathname] ?? { title: '', subtitle: '' };
 
   return (
     <main className="flex h-screen overflow-hidden bg-[#f3f2ee] text-neutral">
-      <aside className="hidden h-screen w-[220px] shrink-0 flex-col border-r border-white/[0.07] bg-neutral text-white lg:flex">
+      <aside className="hidden h-screen w-[220px] shrink-0 flex-col border-r border-white/[0.07] bg-[var(--color-primary-dark)] text-white lg:flex">
         <div className="flex h-16 items-center gap-3 border-b border-white/[0.07] px-4">
           <BrandIcon size={36} className="shrink-0 rounded-md" />
           <div className="min-w-0">
@@ -105,27 +52,6 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
                 badge={item.withUnreadBadge ? unreadCount || undefined : undefined}
               />
             ))}
-          </div>
-        </nav>
-
-        <nav className="min-h-0 flex-1 overflow-y-auto px-2.5 py-1" aria-label="Etiquetas">
-          <div className="mb-2 flex items-center justify-between px-2.5">
-            <span className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-[0.16em] text-white/30"><Tags size={11} /> Etiquetas</span>
-            <button type="button" onClick={() => setLabelManagerOpen(true)} aria-label="Gestionar etiquetas" title="Gestionar etiquetas" className="grid h-6 w-6 place-items-center rounded-lg text-white/35 transition hover:bg-white/[0.07] hover:text-white/80"><Settings2 size={13} /></button>
-          </div>
-          <div className="space-y-0.5">
-            {labels.length === 0 ? (
-              <p className="px-2.5 py-2 text-sm text-white/30">Sin etiquetas todavía.</p>
-            ) : labels.map((label) => {
-              const active = selectedLabelIds.includes(label.id);
-              return (
-                <button key={label.id} onClick={() => handleToggleLabelFilter(label.id)} className={`flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm font-medium transition ${active ? 'bg-white/[0.09] text-white' : 'text-white/55 hover:bg-white/[0.05] hover:text-white/90'}`}>
-                  <ConversationLabelDot color={label.color} />
-                  <span className="min-w-0 flex-1 truncate">{label.name}</span>
-                  <span className="shrink-0 text-sm text-white/35">{labelCounts[label.id] ?? 0}</span>
-                </button>
-              );
-            })}
           </div>
         </nav>
 
@@ -156,18 +82,6 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
 
         {children}
       </section>
-
-      {labelManagerOpen ? (
-        <LabelManagerDialog
-          labels={labels}
-          counts={labelCounts}
-          onClose={() => setLabelManagerOpen(false)}
-          onRename={renameLabel}
-          onRecolor={recolorLabel}
-          onDelete={deleteLabel}
-          onCreate={createLabelGlobally}
-        />
-      ) : null}
     </main>
   );
 }
