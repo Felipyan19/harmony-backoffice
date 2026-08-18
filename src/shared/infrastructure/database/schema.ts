@@ -1,4 +1,4 @@
-import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, foreignKey, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const users = pgTable('users', {
@@ -29,17 +29,6 @@ export const profiles = pgTable('profiles', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [uniqueIndex('profiles_user_id_key').on(table.userId)]);
 
-/** Legacy table kept temporarily for rollback/audit only. Runtime authentication no longer reads it. */
-export const authIdentities = pgTable('auth_identities', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull(),
-  provider: text('provider').notNull(),
-  subject: text('subject').notNull(),
-}, (table) => [
-  uniqueIndex('auth_identities_provider_subject_key').on(table.provider, table.subject),
-  uniqueIndex('auth_identities_user_provider_key').on(table.userId, table.provider),
-]);
-
 export const roles = pgTable('roles', {
   id: uuid('id').defaultRandom().primaryKey(),
   code: text('code').notNull(),
@@ -58,12 +47,12 @@ export const profileRoles = pgTable('profile_roles', {
   profileId: uuid('profile_id').notNull(),
   roleId: uuid('role_id').notNull(),
   assignedBy: uuid('assigned_by'),
-}, (table) => [primaryKey({ columns: [table.profileId, table.roleId] })]);
+}, (table) => [primaryKey({ name: 'profile_roles_pk', columns: [table.profileId, table.roleId] })]);
 
 export const rolePermissions = pgTable('role_permissions', {
   roleId: uuid('role_id').notNull(),
   permissionId: uuid('permission_id').notNull(),
-}, (table) => [primaryKey({ columns: [table.roleId, table.permissionId] })]);
+}, (table) => [primaryKey({ name: 'role_permissions_pk', columns: [table.roleId, table.permissionId] })]);
 
 export const auditLogs = pgTable('audit_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -81,7 +70,7 @@ export const customers = pgTable('customers', {
   phone: text('phone').notNull(),
   email: text('email'),
   notes: text('notes'),
-  tags: text('tags').array().default([]).notNull(),
+  tags: text('tags').array().default(sql`'{}'::text[]`).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
@@ -109,12 +98,22 @@ export const conversations = pgTable('conversations', {
 });
 
 export const conversationLabelAssignments = pgTable('conversation_label_assignments', {
-  conversationId: uuid('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
-  labelId: uuid('label_id').notNull().references(() => conversationLabels.id, { onDelete: 'cascade' }),
+  conversationId: uuid('conversation_id').notNull(),
+  labelId: uuid('label_id').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
-  primaryKey({ columns: [table.conversationId, table.labelId] }),
+  primaryKey({ name: 'conversation_label_assignments_pk', columns: [table.conversationId, table.labelId] }),
   index('conversation_label_assignments_label_id_idx').on(table.labelId, table.conversationId),
+  foreignKey({
+    name: 'conversation_label_assignments_conversation_id_fk',
+    columns: [table.conversationId],
+    foreignColumns: [conversations.id],
+  }).onDelete('cascade'),
+  foreignKey({
+    name: 'conversation_label_assignments_label_id_fk',
+    columns: [table.labelId],
+    foreignColumns: [conversationLabels.id],
+  }).onDelete('cascade'),
 ]);
 
 export const messages = pgTable('messages', {

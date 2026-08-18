@@ -9,9 +9,9 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:generate": "drizzle-kit generate",
-    "db:sql": "node --env-file-if-exists=.env scripts/run-sql.mjs",
-    "auth:bootstrap-admin": "node --env-file-if-exists=.env scripts/bootstrap-admin.mjs"
+    "db:push": "drizzle-kit push",
+    "auth:bootstrap-admin": "node --env-file-if-exists=.env scripts/bootstrap-admin.mjs",
+    "db:seed": "node --env-file-if-exists=.env scripts/seed.mjs"
   },
   "dependencies": {
     "@node-rs/argon2": "2.0.2",

@@ -23,3 +23,16 @@ export interface AccessProfile {
   roles: RoleCode[];
   permissions: PermissionCode[];
 }
+
+export interface PermissionOption {
+  code: PermissionCode;
+  name: string;
+  description?: string;
+}
+
+export interface RoleWithPermissions {
+  code: RoleCode;
+  name: string;
+  description?: string;
+  permissions: PermissionCode[];
+}

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ShieldCheck, Users, Inbox } from 'lucide-react';
+import { ShieldCheck, Users, Inbox, KeyRound } from 'lucide-react';
 import { verifySession } from '@/lib/dal/auth';
 import { getUsersPageData } from '@/lib/dal/users';
 import { createUserAction, deleteUserAction, updateUserAction } from './actions';
@@ -21,7 +21,7 @@ export default async function UsersPage() {
   return <main className="flex min-h-screen bg-[#f4f5f2] text-zinc-900">
     <aside className="hidden min-h-screen w-[220px] shrink-0 flex-col bg-harmony-900 text-white lg:flex">
       <div className="flex h-[72px] items-center gap-3 border-b border-white/[0.07] px-4"><div className="grid h-9 w-9 place-items-center rounded-xl bg-gold-500 text-xs font-bold text-harmony-900">H</div><div><div className="text-[14px] font-semibold">Harmony</div><div className="text-[9px] text-white/45">Backoffice</div></div></div>
-      <nav className="space-y-1 px-2.5 py-4 text-[11px]"><Link href="/conversaciones" className="flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-white/55 hover:bg-white/[0.05]"><Inbox size={17}/>Conversaciones</Link><Link href="/clientes" className="flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-white/55 hover:bg-white/[0.05]"><Users size={17}/>Clientes</Link><Link href="/usuarios" className="relative flex h-10 items-center gap-2.5 rounded-lg bg-white/[0.09] px-2.5 text-white"><span className="absolute inset-y-2 left-0 w-0.5 rounded-r-full bg-gold-400"/><ShieldCheck size={17} className="text-gold-300"/>Usuarios</Link></nav>
+      <nav className="space-y-1 px-2.5 py-4 text-[11px]"><Link href="/conversaciones" className="flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-white/55 hover:bg-white/[0.05]"><Inbox size={17}/>Conversaciones</Link><Link href="/clientes" className="flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-white/55 hover:bg-white/[0.05]"><Users size={17}/>Clientes</Link><Link href="/usuarios" className="relative flex h-10 items-center gap-2.5 rounded-lg bg-white/[0.09] px-2.5 text-white"><span className="absolute inset-y-2 left-0 w-0.5 rounded-r-full bg-gold-400"/><ShieldCheck size={17} className="text-gold-300"/>Usuarios</Link><Link href="/roles" className="flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-white/55 hover:bg-white/[0.05]"><KeyRound size={17}/>Roles y permisos</Link></nav>
     </aside>
     <section className="min-w-0 flex-1 p-5 md:p-7"><div className="mx-auto max-w-6xl"><div className="mb-6"><h1 className="text-2xl font-semibold tracking-[-0.03em]">Usuarios</h1><p className="mt-1 text-[11px] text-zinc-500">Administra accesos, perfiles y roles del equipo Harmony.</p></div>
       {canManage ? <CreateUserForm roles={roles}/> : null}

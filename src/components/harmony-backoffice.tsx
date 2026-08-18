@@ -2,19 +2,21 @@
 
 import { FormEvent, ReactNode, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, ChevronRight, Inbox, LogOut, ShieldCheck, Users } from 'lucide-react';
+import { Bell, ChevronRight, Inbox, KeyRound, LogOut, Settings2, ShieldCheck, Tags, Users } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
 import { customers, initialConversationLabels, initialConversations } from '@/lib/mock-data';
-import type { Conversation, ConversationLabel, ConversationStatus, Customer } from '@/types/domain';
+import type { Conversation, ConversationLabel, ConversationLabelColor, ConversationStatus, Customer } from '@/types/domain';
 import {
-  ALL_LABELS_FILTER,
+  countConversationsByLabel,
   findConversationLabelByName,
-  matchesConversationLabel,
+  matchesConversationLabels,
   nextConversationLabelColor,
   normalizeConversationLabelName,
 } from '@/modules/conversations/domain/conversation-labels';
 import { ConversationList, type InboxFilter } from '@/modules/inbox/conversation-list';
+import { ConversationLabelDot } from '@/modules/inbox/conversation-labels';
 import { ChatPanel } from '@/modules/inbox/chat-panel';
+import { LabelManagerDialog } from '@/modules/inbox/label-manager';
 import { CustomerDetails } from '@/modules/customers/customer-details';
 import { Avatar, SearchInput } from '@/modules/shared/ui';
 
@@ -24,16 +26,25 @@ export function HarmonyBackoffice({ initialView = 'conversations' }: { initialVi
   const router = useRouter();
   const [view, setView] = useState<View>(initialView);
   const [filter, setFilter] = useState<InboxFilter>('all');
-  const [labelFilter, setLabelFilter] = useState(ALL_LABELS_FILTER);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [labels, setLabels] = useState<ConversationLabel[]>(initialConversationLabels);
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
   const [selectedConversationId, setSelectedConversationId] = useState(initialConversations[0].id);
   const [selectedCustomerId, setSelectedCustomerId] = useState(customers[0].id);
   const [draft, setDraft] = useState('');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedConversationIds, setSelectedConversationIds] = useState<Set<string>>(new Set());
+  const [labelManagerOpen, setLabelManagerOpen] = useState(false);
 
   const selectedConversation = conversations.find((item) => item.id === selectedConversationId) ?? conversations[0];
   const selectedCustomer = customers.find((item) => item.id === selectedConversation.customerId) ?? customers[0];
+
+  const labelCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const label of labels) counts[label.id] = countConversationsByLabel(conversations, label.id);
+    return counts;
+  }, [labels, conversations]);
 
   const filteredConversations = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -41,7 +52,7 @@ export function HarmonyBackoffice({ initialView = 'conversations' }: { initialVi
       const customer = customers.find((item) => item.id === conversation.customerId);
       const lastMessage = conversation.messages.at(-1)?.content ?? '';
       const matchesFilter = filter === 'all' || conversation.status === filter;
-      const matchesLabel = matchesConversationLabel(conversation, labelFilter);
+      const matchesLabel = matchesConversationLabels(conversation, selectedLabelIds);
       const matchesQuery = !normalized
         || customer?.name.toLowerCase().includes(normalized)
         || customer?.phone.includes(normalized)
@@ -49,7 +60,7 @@ export function HarmonyBackoffice({ initialView = 'conversations' }: { initialVi
         || conversation.labels.some((label) => label.name.toLowerCase().includes(normalized));
       return matchesFilter && matchesLabel && matchesQuery;
     });
-  }, [conversations, filter, labelFilter, query]);
+  }, [conversations, filter, selectedLabelIds, query]);
 
   const filteredCustomers = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -133,12 +144,98 @@ export function HarmonyBackoffice({ initialView = 'conversations' }: { initialVi
     setConversations((current) => current.map((conversation) => conversation.id === selectedConversation.id ? { ...conversation, labels: [...conversation.labels, created] } : conversation));
   }
 
+  function toggleLabelFilter(labelId: string) {
+    setSelectedLabelIds((current) => current.includes(labelId) ? current.filter((id) => id !== labelId) : [...current, labelId]);
+  }
+
+  function clearLabelFilter() {
+    setSelectedLabelIds([]);
+  }
+
+  function toggleSelectionMode() {
+    setSelectionMode((current) => {
+      if (current) setSelectedConversationIds(new Set());
+      return !current;
+    });
+  }
+
+  function toggleConversationSelection(conversationId: string) {
+    setSelectedConversationIds((current) => {
+      const next = new Set(current);
+      if (next.has(conversationId)) next.delete(conversationId); else next.add(conversationId);
+      return next;
+    });
+  }
+
+  function clearConversationSelection() {
+    setSelectedConversationIds(new Set());
+  }
+
+  function bulkApplyLabel(labelId: string) {
+    const label = labels.find((item) => item.id === labelId);
+    if (!label) return;
+    setConversations((current) => current.map((conversation) => {
+      if (!selectedConversationIds.has(conversation.id) || conversation.labels.some((item) => item.id === labelId)) return conversation;
+      return { ...conversation, labels: [...conversation.labels, label] };
+    }));
+  }
+
+  function bulkRemoveLabel(labelId: string) {
+    setConversations((current) => current.map((conversation) => {
+      if (!selectedConversationIds.has(conversation.id)) return conversation;
+      return { ...conversation, labels: conversation.labels.filter((item) => item.id !== labelId) };
+    }));
+  }
+
+  function createLabelGlobally(name: string) {
+    const normalizedName = normalizeConversationLabelName(name);
+    if (!normalizedName || findConversationLabelByName(labels, normalizedName)) return;
+    const created: ConversationLabel = { id: `lbl_${Date.now().toString(36)}`, name: normalizedName, color: nextConversationLabelColor(labels.length) };
+    setLabels((current) => [...current, created]);
+  }
+
+  function renameLabel(labelId: string, name: string) {
+    setLabels((current) => current.map((label) => label.id === labelId ? { ...label, name } : label));
+    setConversations((current) => current.map((conversation) => ({
+      ...conversation,
+      labels: conversation.labels.map((label) => label.id === labelId ? { ...label, name } : label),
+    })));
+  }
+
+  function recolorLabel(labelId: string, color: ConversationLabelColor) {
+    setLabels((current) => current.map((label) => label.id === labelId ? { ...label, color } : label));
+    setConversations((current) => current.map((conversation) => ({
+      ...conversation,
+      labels: conversation.labels.map((label) => label.id === labelId ? { ...label, color } : label),
+    })));
+  }
+
+  function deleteLabel(labelId: string) {
+    setLabels((current) => current.filter((label) => label.id !== labelId));
+    setConversations((current) => current.map((conversation) => ({
+      ...conversation,
+      labels: conversation.labels.filter((label) => label.id !== labelId),
+    })));
+    setSelectedLabelIds((current) => current.filter((id) => id !== labelId));
+  }
+
   const pendingCount = conversations.filter((item) => item.status === 'pending').length;
   const unreadCount = conversations.reduce((total, item) => total + item.unreadCount, 0);
 
   return (
     <main className="flex min-h-screen bg-[#f4f5f2] text-zinc-900">
-      <Sidebar view={view} unreadCount={unreadCount} onViewChange={navigate} onUsers={() => router.push('/usuarios')} />
+      <Sidebar
+        view={view}
+        unreadCount={unreadCount}
+        labels={labels}
+        labelCounts={labelCounts}
+        selectedLabelIds={selectedLabelIds}
+        onViewChange={navigate}
+        onUsers={() => router.push('/usuarios')}
+        onRoles={() => router.push('/roles')}
+        onToggleLabelFilter={(labelId) => { if (view !== 'conversations') navigate('conversations'); toggleLabelFilter(labelId); }}
+        onManageLabels={() => setLabelManagerOpen(true)}
+      />
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-20 shrink-0 items-center justify-between border-b border-zinc-200/80 bg-white/95 px-5 backdrop-blur md:px-7">
           <div>
@@ -153,7 +250,28 @@ export function HarmonyBackoffice({ initialView = 'conversations' }: { initialVi
 
         {view === 'conversations' ? (
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 xl:grid-cols-[330px_minmax(520px,1fr)_300px] 2xl:grid-cols-[360px_minmax(620px,1fr)_320px]">
-            <ConversationList conversations={filteredConversations} customers={customers} labels={labels} selectedId={selectedConversationId} query={query} filter={filter} labelFilter={labelFilter} onQueryChange={setQuery} onFilterChange={setFilter} onLabelFilterChange={setLabelFilter} onSelect={openConversation} />
+            <ConversationList
+              conversations={filteredConversations}
+              customers={customers}
+              labels={labels}
+              labelCounts={labelCounts}
+              selectedId={selectedConversationId}
+              query={query}
+              filter={filter}
+              selectedLabelIds={selectedLabelIds}
+              onQueryChange={setQuery}
+              onFilterChange={setFilter}
+              onToggleLabelFilter={toggleLabelFilter}
+              onClearLabelFilter={clearLabelFilter}
+              onSelect={openConversation}
+              selectionMode={selectionMode}
+              selectedConversationIds={selectedConversationIds}
+              onToggleSelectionMode={toggleSelectionMode}
+              onToggleConversationSelection={toggleConversationSelection}
+              onClearConversationSelection={clearConversationSelection}
+              onBulkApplyLabel={bulkApplyLabel}
+              onBulkRemoveLabel={bulkRemoveLabel}
+            />
             <ChatPanel conversation={selectedConversation} customer={selectedCustomer} labels={labels} draft={draft} onDraftChange={setDraft} onSend={sendMessage} onStatusChange={changeStatus} onToggleLabel={toggleConversationLabel} onCreateLabel={createConversationLabel} />
             <CustomerDetails customer={selectedCustomer} conversation={selectedConversation} onOpenCustomers={() => navigate('customers')} />
           </div>
@@ -161,11 +279,34 @@ export function HarmonyBackoffice({ initialView = 'conversations' }: { initialVi
           <CustomersView customers={filteredCustomers} selectedCustomerId={selectedCustomerId} conversations={conversations} query={query} onQueryChange={setQuery} onSelect={openCustomer} />
         )}
       </section>
+
+      {labelManagerOpen ? (
+        <LabelManagerDialog
+          labels={labels}
+          counts={labelCounts}
+          onClose={() => setLabelManagerOpen(false)}
+          onRename={renameLabel}
+          onRecolor={recolorLabel}
+          onDelete={deleteLabel}
+          onCreate={createLabelGlobally}
+        />
+      ) : null}
     </main>
   );
 }
 
-function Sidebar({ view, unreadCount, onViewChange, onUsers }: { view: View; unreadCount: number; onViewChange: (view: View) => void; onUsers: () => void }) {
+function Sidebar({ view, unreadCount, labels, labelCounts, selectedLabelIds, onViewChange, onUsers, onRoles, onToggleLabelFilter, onManageLabels }: {
+  view: View;
+  unreadCount: number;
+  labels: ConversationLabel[];
+  labelCounts: Record<string, number>;
+  selectedLabelIds: string[];
+  onViewChange: (view: View) => void;
+  onUsers: () => void;
+  onRoles: () => void;
+  onToggleLabelFilter: (labelId: string) => void;
+  onManageLabels: () => void;
+}) {
   return (
     <aside className="hidden min-h-screen w-[220px] shrink-0 flex-col border-r border-white/[0.07] bg-harmony-900 text-white lg:flex">
       <div className="flex h-[72px] items-center gap-3 border-b border-white/[0.07] px-4">
@@ -182,6 +323,28 @@ function Sidebar({ view, unreadCount, onViewChange, onUsers }: { view: View; unr
           <SidebarButton active={view === 'conversations'} icon={<Inbox size={17} />} label="Conversaciones" badge={unreadCount || undefined} onClick={() => onViewChange('conversations')} />
           <SidebarButton active={view === 'customers'} icon={<Users size={17} />} label="Clientes" onClick={() => onViewChange('customers')} />
           <SidebarButton active={false} icon={<ShieldCheck size={17} />} label="Usuarios" onClick={onUsers} />
+          <SidebarButton active={false} icon={<KeyRound size={17} />} label="Roles y permisos" onClick={onRoles} />
+        </div>
+      </nav>
+
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2.5 py-1" aria-label="Etiquetas">
+        <div className="mb-2 flex items-center justify-between px-2.5">
+          <span className="flex items-center gap-1.5 text-[8px] font-semibold uppercase tracking-[0.16em] text-white/30"><Tags size={11} /> Etiquetas</span>
+          <button type="button" onClick={onManageLabels} aria-label="Gestionar etiquetas" title="Gestionar etiquetas" className="grid h-6 w-6 place-items-center rounded-lg text-white/35 transition hover:bg-white/[0.07] hover:text-white/80"><Settings2 size={13} /></button>
+        </div>
+        <div className="space-y-0.5">
+          {labels.length === 0 ? (
+            <p className="px-2.5 py-2 text-[8px] text-white/30">Sin etiquetas todavía.</p>
+          ) : labels.map((label) => {
+            const active = selectedLabelIds.includes(label.id);
+            return (
+              <button key={label.id} onClick={() => onToggleLabelFilter(label.id)} className={`flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[10px] font-medium transition ${active ? 'bg-white/[0.09] text-white' : 'text-white/55 hover:bg-white/[0.05] hover:text-white/90'}`}>
+                <ConversationLabelDot color={label.color} />
+                <span className="min-w-0 flex-1 truncate">{label.name}</span>
+                <span className="shrink-0 text-[8px] text-white/35">{labelCounts[label.id] ?? 0}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 

@@ -141,10 +141,6 @@ The frontend must not depend directly on Meta/WhatsApp APIs. Channel-specific pa
 - `messages`: transcript and delivery state.
 - `channels`: WhatsApp/web/Instagram adapters as they are introduced.
 
-## Legacy rollback data
-
-`neon_auth` and `auth_identities` may remain physically present during the initial cutover, but no runtime authentication path reads them. They should be removed only in a later migration after the Auth.js/PostgreSQL flow is proven stable in production.
-
 ## Current product limitation
 
 The messaging workspace still uses seeded client-side mock data for part of the V1 UX. Authentication, RBAC and user administration are being moved to real PostgreSQL first; persisted messaging/realtime integration remains a separate implementation slice.

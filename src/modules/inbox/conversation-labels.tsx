@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { Check, Plus, Tags } from 'lucide-react';
+import { Check, Plus, Tag, Tags, X } from 'lucide-react';
 import type { ConversationLabel, ConversationLabelColor } from '@/types/domain';
 
 const colorClasses: Record<ConversationLabelColor, string> = {
@@ -12,6 +12,19 @@ const colorClasses: Record<ConversationLabelColor, string> = {
   violet: 'bg-violet-50 text-violet-700 ring-violet-200',
   zinc: 'bg-zinc-100 text-zinc-600 ring-zinc-200',
 };
+
+const dotClasses: Record<ConversationLabelColor, string> = {
+  gold: 'bg-gold-500',
+  green: 'bg-emerald-500',
+  blue: 'bg-sky-500',
+  rose: 'bg-rose-500',
+  violet: 'bg-violet-500',
+  zinc: 'bg-zinc-400',
+};
+
+export function ConversationLabelDot({ color }: { color: ConversationLabelColor }) {
+  return <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClasses[color]}`} />;
+}
 
 export function ConversationLabelBadge({ label, compact = false }: { label: ConversationLabel; compact?: boolean }) {
   return (
@@ -64,5 +77,72 @@ export function ConversationLabelEditor({ labels, selectedLabels, onToggle, onCr
         </form>
       </div>
     </details>
+  );
+}
+
+export function ConversationLabelFilterMenu({ labels, counts, selectedLabelIds, onToggle, onClear }: {
+  labels: ConversationLabel[];
+  counts: Record<string, number>;
+  selectedLabelIds: string[];
+  onToggle: (labelId: string) => void;
+  onClear: () => void;
+}) {
+  const selectedCount = selectedLabelIds.length;
+
+  return (
+    <details className="relative">
+      <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 text-[9px] font-medium text-zinc-600 transition hover:bg-zinc-50 [&::-webkit-details-marker]:hidden">
+        <Tags size={14} className="shrink-0 text-zinc-400" />
+        <span className="min-w-0 flex-1 truncate text-left">
+          {selectedCount === 0 ? 'Todas las etiquetas' : selectedCount === 1 ? labels.find((label) => label.id === selectedLabelIds[0])?.name ?? 'Todas las etiquetas' : `${selectedCount} etiquetas`}
+        </span>
+      </summary>
+      <div className="absolute left-0 top-11 z-40 w-64 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_18px_55px_rgba(24,60,43,0.16)]">
+        <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
+          <strong className="text-[11px] font-semibold text-zinc-800">Filtrar por etiqueta</strong>
+          {selectedCount > 0 ? <button type="button" onClick={onClear} className="text-[8px] font-medium text-harmony-700 hover:underline">Limpiar</button> : null}
+        </div>
+        <div className="max-h-60 overflow-y-auto p-2">
+          {labels.length === 0 ? <p className="px-2 py-4 text-center text-[9px] text-zinc-400">Todavía no hay etiquetas.</p> : labels.map((label) => {
+            const selected = selectedLabelIds.includes(label.id);
+            return (
+              <button key={label.id} type="button" onClick={() => onToggle(label.id)} className={`flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition ${selected ? 'bg-harmony-50' : 'hover:bg-zinc-50'}`}>
+                <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${selected ? 'border-harmony-600 bg-harmony-700 text-white' : 'border-zinc-200 bg-white text-transparent'}`}><Check size={12} /></span>
+                <span className="min-w-0 flex-1"><ConversationLabelBadge label={label} /></span>
+                <span className="shrink-0 text-[8px] font-medium text-zinc-400">{counts[label.id] ?? 0}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </details>
+  );
+}
+
+export function ConversationLabelBulkBar({ labels, selectedCount, onApply, onRemove, onClear }: {
+  labels: ConversationLabel[];
+  selectedCount: number;
+  onApply: (labelId: string) => void;
+  onRemove: (labelId: string) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 border-b border-zinc-100 bg-harmony-50/70 px-3.5 py-2.5">
+      <span className="shrink-0 text-[9px] font-semibold text-harmony-800">{selectedCount} seleccionada{selectedCount === 1 ? '' : 's'}</span>
+      <details className="relative ml-auto">
+        <summary className="flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-lg border border-harmony-200 bg-white px-2.5 text-[8px] font-medium text-harmony-700 transition hover:bg-harmony-50 [&::-webkit-details-marker]:hidden">
+          <Tag size={12} /> Aplicar etiqueta
+        </summary>
+        <div className="absolute right-0 top-9 z-40 max-h-56 w-56 overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-2 shadow-[0_18px_55px_rgba(24,60,43,0.16)]">
+          {labels.length === 0 ? <p className="px-2 py-3 text-center text-[9px] text-zinc-400">Todavía no hay etiquetas.</p> : labels.map((label) => (
+            <div key={label.id} className="flex items-center gap-1 rounded-xl px-1 py-0.5 hover:bg-zinc-50">
+              <button type="button" onClick={() => onApply(label.id)} className="flex-1 truncate rounded-lg px-1.5 py-1.5 text-left" title="Aplicar a las seleccionadas"><ConversationLabelBadge label={label} /></button>
+              <button type="button" onClick={() => onRemove(label.id)} aria-label={`Quitar ${label.name} de las seleccionadas`} title="Quitar de las seleccionadas" className="grid h-6 w-6 shrink-0 place-items-center rounded-lg text-zinc-400 transition hover:bg-rose-50 hover:text-rose-600"><X size={12} /></button>
+            </div>
+          ))}
+        </div>
+      </details>
+      <button type="button" onClick={onClear} className="shrink-0 rounded-lg px-2 py-1.5 text-[8px] font-medium text-zinc-500 hover:text-zinc-800">Cancelar</button>
+    </div>
   );
 }

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Conversation, ConversationLabel } from './conversation';
 import {
-  ALL_LABELS_FILTER,
+  countConversationsByLabel,
   findConversationLabelByName,
-  matchesConversationLabel,
+  matchesConversationLabels,
   normalizeConversationLabelName,
 } from './conversation-labels';
 
@@ -30,12 +30,23 @@ describe('conversation labels', () => {
     expect(findConversationLabelByName([priority, booking], '  PRIORIDAD ')).toEqual(priority);
   });
 
-  it('matches every conversation when all labels are selected', () => {
-    expect(matchesConversationLabel(conversation([]), ALL_LABELS_FILTER)).toBe(true);
+  it('matches every conversation when no label is selected', () => {
+    expect(matchesConversationLabels(conversation([]), [])).toBe(true);
   });
 
-  it('matches only conversations assigned to the selected label', () => {
-    expect(matchesConversationLabel(conversation([priority]), priority.id)).toBe(true);
-    expect(matchesConversationLabel(conversation([booking]), priority.id)).toBe(false);
+  it('matches only conversations assigned to one of the selected labels', () => {
+    expect(matchesConversationLabels(conversation([priority]), [priority.id])).toBe(true);
+    expect(matchesConversationLabels(conversation([booking]), [priority.id])).toBe(false);
+  });
+
+  it('matches conversations that carry any of several selected labels', () => {
+    expect(matchesConversationLabels(conversation([booking]), [priority.id, booking.id])).toBe(true);
+    expect(matchesConversationLabels(conversation([]), [priority.id, booking.id])).toBe(false);
+  });
+
+  it('counts how many conversations carry a given label', () => {
+    const conversations = [conversation([priority]), conversation([priority, booking]), conversation([booking])];
+    expect(countConversationsByLabel(conversations, priority.id)).toBe(2);
+    expect(countConversationsByLabel(conversations, booking.id)).toBe(2);
   });
 });
