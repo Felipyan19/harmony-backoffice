@@ -25,5 +25,5 @@ export async function updateRolePermissionsAction(formData: FormData) {
   }
 
   await rolePermissionService.setRolePermissions(input.roleCode, input.permissions, actor.profileId);
-  revalidatePath('/roles');
+  revalidatePath('/usuarios');
 }

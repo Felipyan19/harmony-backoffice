@@ -1,5 +1,8 @@
-import { HarmonyBackoffice } from '@/components/harmony-backoffice';
+import type { Metadata } from 'next';
+import { CustomersPageContent } from '@/components/backoffice-views';
+
+export const metadata: Metadata = { title: 'Clientes' };
 
 export default function CustomersPage() {
-  return <HarmonyBackoffice initialView="customers" />;
+  return <CustomersPageContent />;
 }

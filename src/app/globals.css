@@ -1,41 +1,67 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/*
+ * Design system source of truth — exactly 4 colors and 3 text sizes.
+ * Every component consumes these tokens (Tailwind opacity modifiers give
+ * tints, e.g. bg-primary/10, border-neutral/15) instead of a raw palette
+ * color (zinc/emerald/amber/rose/...) or an arbitrary text-[Npx] value.
+ *
+ * primary → brand, interactive/active states, "open" conversation status
+ * neutral → all text/borders/surfaces (incl. dark chrome), "resolved" status
+ * warning → "pending" conversation status, attention banners
+ * danger  → destructive actions, errors
+ *
+ * --color-label-gold is a deliberate exception: it backs one option of the
+ * user-assignable conversation label colors (CONVERSATION_LABEL_COLORS),
+ * which is product data, not app chrome. The other label colors reuse
+ * Tailwind's built-in emerald/sky/rose/violet/zinc — no token needed.
+ */
 @theme {
   --font-sans: 'Poppins', system-ui, sans-serif;
-  --color-harmony-50: #f5f8f5;
-  --color-harmony-100: #e7efe9;
-  --color-harmony-200: #cfdfd3;
-  --color-harmony-300: #aac6b1;
-  --color-harmony-400: #7da487;
-  --color-harmony-500: #5c8467;
-  --color-harmony-600: #42664d;
-  --color-harmony-700: #33513a;
-  --color-harmony-800: #29412f;
-  --color-harmony-900: #22362a;
-  --color-gold-50: #fbf8f1;
-  --color-gold-100: #f4ead8;
-  --color-gold-200: #ead8b8;
-  --color-gold-300: #d8bb86;
-  --color-gold-400: #c29d5d;
-  --color-gold-500: #b4894a;
-  --color-gold-600: #98703c;
-  --color-gold-700: #795830;
+
+  --color-primary: #5c8467;
+  --color-neutral: #172019;
+  --color-warning: #b45309;
+  --color-danger: #be123c;
+
+  --color-label-gold: #795830;
+
+  /*
+   * Hierarchy — pick by role, never by "what looks right here":
+   * text-lg   → page-level <h1> only (page title, login welcome title)
+   * text-base → section <h3> subheadings, and primary/emphasized content
+   *             (customer names, message text, form inputs)
+   * text-sm   → everything else (meta, timestamps, badges, nav labels,
+   *             secondary text) — the default for body copy
+   * Weight/color/opacity carry emphasis within a size; never reach for a
+   * 4th size (incl. an untagged element that falls back to the browser
+   * default) to make something "stand out" a bit more.
+   */
+  --text-*: initial;
+  --text-sm: 0.75rem;
+  --text-sm--line-height: 1rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.25rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
 }
 
 :root { color-scheme: light; }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
 body {
-  background: #f5f5f2;
-  color: #172019;
+  background: #f3f2ee;
+  color: var(--color-neutral);
   font-family: 'Poppins', system-ui, sans-serif;
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
   -webkit-font-smoothing: antialiased;
 }
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
-::selection { background: #cfdfd3; color: #22362a; }
+::selection { background: color-mix(in srgb, var(--color-primary) 25%, white); color: var(--color-neutral); }
 ::-webkit-scrollbar { width: 7px; height: 7px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #d9ddd8; border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: #c6ccc5; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--color-neutral) 15%, white); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--color-neutral) 22%, white); }

@@ -1,5 +1,8 @@
-import { HarmonyBackoffice } from '@/components/harmony-backoffice';
+import type { Metadata } from 'next';
+import { ConversationsPageContent } from '@/components/backoffice-views';
+
+export const metadata: Metadata = { title: 'Conversaciones' };
 
 export default function ConversationsPage() {
-  return <HarmonyBackoffice initialView="conversations" />;
+  return <ConversationsPageContent />;
 }
