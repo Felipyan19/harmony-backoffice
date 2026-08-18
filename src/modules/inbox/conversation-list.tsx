@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 import type { Conversation, ConversationLabel, ConversationStatus, Customer } from '@/types/domain';
-import { Avatar, EmptyState, Panel, SearchInput, StatusBadge } from '@/modules/shared/ui';
+import { Avatar, Badge, CountBadge, EmptyState, Panel, SearchInput, StatusBadge } from '@/modules/shared/ui';
 import { ConversationLabelBadge, ConversationLabelBulkBar, ConversationLabelFilterMenu } from './conversation-labels';
 
 export type InboxFilter = 'all' | ConversationStatus;
@@ -89,7 +89,7 @@ export function ConversationList({
                   {conversation.labels.length > 0 ? (
                     <div className="mt-2 flex min-w-0 flex-wrap gap-1">
                       {conversation.labels.slice(0, 2).map((label) => <ConversationLabelBadge key={label.id} label={label} compact />)}
-                      {conversation.labels.length > 2 ? <span className="rounded-full bg-neutral/8 px-2 py-0.5 text-sm font-medium text-neutral/60">+{conversation.labels.length - 2}</span> : null}
+                      {conversation.labels.length > 2 ? <Badge compact>+{conversation.labels.length - 2}</Badge> : null}
                     </div>
                   ) : null}
                   <div className="mt-2.5 flex items-center gap-2">
@@ -99,7 +99,7 @@ export function ConversationList({
                   </div>
                 </div>
               </button>
-              {conversation.unreadCount > 0 && <span className="absolute bottom-4 right-4 grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1.5 text-sm font-bold text-white">{conversation.unreadCount}</span>}
+              <CountBadge count={conversation.unreadCount} className="absolute bottom-4 right-4" />
             </div>
           );
         })}

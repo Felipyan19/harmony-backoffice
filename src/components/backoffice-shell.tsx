@@ -6,6 +6,7 @@ import { ReactNode } from 'react';
 import { Bell, Inbox, LogOut, ShieldCheck, Users } from 'lucide-react';
 import { BrandIcon } from '@/components/brand-icon';
 import { authClient } from '@/lib/auth/client';
+import { Badge, CountBadge } from '@/modules/shared/ui';
 import { useBackofficeState } from './backoffice-context';
 
 const NAV_ITEMS = [
@@ -49,7 +50,7 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
                 active={pathname === item.href}
                 icon={<item.icon size={17} />}
                 label={item.label}
-                badge={item.withUnreadBadge ? unreadCount || undefined : undefined}
+                badge={item.withUnreadBadge ? unreadCount : 0}
               />
             ))}
           </div>
@@ -75,7 +76,7 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
             <p className="mt-0.5 hidden text-sm text-neutral/60 sm:block">{pageMeta.subtitle}</p>
           </div>
           <div className="flex items-center gap-2.5">
-            <button className="hidden h-9 items-center gap-2 rounded-md border border-neutral/15 bg-white px-3 text-sm font-medium text-neutral/70 sm:flex"><Bell size={15} /><span className="rounded-full bg-warning/10 px-2 py-0.5 text-warning">{pendingCount} pendientes</span></button>
+            <button className="hidden h-9 items-center gap-2 rounded-md border border-neutral/15 bg-white px-3 text-sm font-medium text-neutral/70 sm:flex"><Bell size={15} /><Badge tone="warning" compact>{pendingCount} pendientes</Badge></button>
             <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-sm font-semibold text-white">{user.initials}</div>
           </div>
         </header>
@@ -86,13 +87,13 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
   );
 }
 
-function SidebarLink({ href, active, icon, label, badge }: { href: string; active: boolean; icon: ReactNode; label: string; badge?: number }) {
+function SidebarLink({ href, active, icon, label, badge = 0 }: { href: string; active: boolean; icon: ReactNode; label: string; badge?: number }) {
   return (
     <Link href={href} className={`relative flex h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-base font-medium transition ${active ? 'bg-white/[0.09] text-white' : 'text-white/55 hover:bg-white/[0.05] hover:text-white/90'}`}>
       {active ? <span className="absolute inset-y-2 left-0 w-0.5 rounded-r-full bg-primary" /> : null}
       <span className={active ? 'text-white' : 'text-white/45'}>{icon}</span>
       <span className="flex-1 truncate">{label}</span>
-      {badge ? <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-1.5 text-sm font-bold text-white">{badge}</span> : null}
+      <CountBadge count={badge} />
     </Link>
   );
 }

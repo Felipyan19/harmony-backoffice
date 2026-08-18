@@ -3,7 +3,7 @@
 import { FormEvent } from 'react';
 import { CheckCheck, MessageCircle, MoreHorizontal, Paperclip, Send, Sparkles } from 'lucide-react';
 import type { Conversation, ConversationLabel, ConversationStatus, Customer } from '@/types/domain';
-import { Avatar, Button, IconButton, Panel } from '@/modules/shared/ui';
+import { Avatar, Button, IconButton, Panel, Select } from '@/modules/shared/ui';
 import { ConversationLabelBadge, ConversationLabelEditor } from './conversation-labels';
 
 export function ChatPanel({ conversation, customer, labels, draft, onDraftChange, onSend, onStatusChange, onToggleLabel, onCreateLabel }: {
@@ -30,11 +30,11 @@ export function ChatPanel({ conversation, customer, labels, draft, onDraftChange
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <ConversationLabelEditor labels={labels} selectedLabels={conversation.labels} onToggle={onToggleLabel} onCreate={onCreateLabel} />
-            <select value={conversation.status} onChange={(event) => onStatusChange(event.target.value as ConversationStatus)} aria-label="Estado de conversación" className="h-9 rounded-md border border-neutral/15 bg-neutral/4 px-3 text-sm font-medium text-neutral/80 outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/12">
+            <Select value={conversation.status} onChange={(event) => onStatusChange(event.target.value as ConversationStatus)} aria-label="Estado de conversación">
               <option value="open">Abierta</option>
               <option value="pending">Pendiente</option>
               <option value="resolved">Resuelta</option>
-            </select>
+            </Select>
             <IconButton className="hidden sm:grid" aria-label="Más opciones"><MoreHorizontal size={18} /></IconButton>
           </div>
         </div>

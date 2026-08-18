@@ -116,7 +116,7 @@ export function ConversationLabelBulkBar({ labels, selectedCount, onApply, onRem
       <span className="shrink-0 text-sm font-semibold text-primary">{selectedCount} seleccionada{selectedCount === 1 ? '' : 's'}</span>
       <Popover
         align="right"
-        panelClassName="top-9 max-h-56 w-56 overflow-y-auto"
+        panelClassName="top-9 w-56"
         containerClassName="ml-auto"
         renderTrigger={({ open, onClick }) => (
           <button type="button" onClick={onClick} aria-haspopup="true" aria-expanded={open} className="flex h-8 items-center gap-1.5 rounded-md border border-primary/25 bg-white px-2.5 text-sm font-medium text-primary transition hover:bg-primary/8">
@@ -124,7 +124,7 @@ export function ConversationLabelBulkBar({ labels, selectedCount, onApply, onRem
           </button>
         )}
       >
-        <div className="p-2">
+        <div className="max-h-56 overflow-y-auto p-2">
           {labels.length === 0 ? <p className="px-2 py-3 text-center text-sm text-neutral/40">Todavía no hay etiquetas.</p> : labels.map((label) => (
             <div key={label.id} className="flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-neutral/5">
               <button type="button" onClick={() => onApply(label.id)} className="flex-1 truncate rounded-md px-1.5 py-1.5 text-left" title="Aplicar a las seleccionadas"><ConversationLabelBadge label={label} /></button>

@@ -6,7 +6,7 @@ import { verifySession } from '@/lib/dal/auth';
 import { getUsersPageData } from '@/lib/dal/users';
 import { getRolesPageData } from '@/lib/dal/roles';
 import type { PermissionOption, RoleWithPermissions } from '@/modules/access/domain/access';
-import { Button } from '@/modules/shared/ui';
+import { Button, Checkbox, Select, TextField } from '@/modules/shared/ui';
 import { createUserAction, deleteUserAction, updateUserAction } from './actions';
 import { updateRolePermissionsAction } from '../roles/actions';
 
@@ -45,8 +45,41 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     {activeTab === 'roles' && rolesData
       ? <RolesTab roles={rolesData.roles} permissions={rolesData.permissions} />
       : <>
-        {canManage ? <CreateUserForm roles={roles}/> : null}
-        <div className="mt-5 overflow-hidden rounded-2xl border border-neutral/12 bg-white shadow-sm"><div className="grid grid-cols-[1.2fr_1fr_.8fr_.8fr] gap-4 border-b border-neutral/10 bg-neutral/4 px-5 py-3 text-sm font-medium text-neutral/40"><span>Usuario</span><span>Roles</span><span>Estado</span><span>Acciones</span></div>{users.map((user)=><form key={user.userId} action={updateUserAction} className="grid grid-cols-[1.2fr_1fr_.8fr_.8fr] items-start gap-4 border-b border-neutral/10 px-5 py-4 last:border-b-0"><input type="hidden" name="userId" value={user.userId}/><div><input name="displayName" defaultValue={user.displayName} disabled={!canManage} className="w-full rounded-lg border border-neutral/15 px-2 py-1.5 text-sm font-medium disabled:border-transparent disabled:bg-transparent"/><div className="mt-1 text-sm text-neutral/40">{user.email}</div><input name="phone" defaultValue={user.phone ?? ''} disabled={!canManage} placeholder="Teléfono" className="mt-2 w-full rounded-lg border border-neutral/15 px-2 py-1.5 text-sm disabled:hidden"/></div><div className="space-y-1">{roles.map((role)=><label key={role.code} className="flex items-center gap-1.5 text-sm"><input type="checkbox" name="roles" value={role.code} defaultChecked={user.roles.includes(role.code)} disabled={!canManage}/>{role.name}</label>)}</div><select name="status" defaultValue={user.status} disabled={!canManage} className="rounded-lg border border-neutral/15 px-2 py-1.5 text-sm"><option value="active">Activo</option><option value="disabled">Desactivado</option></select><div className="flex flex-wrap gap-2">{canManage?<><Button type="submit">Guardar</Button><Button type="submit" formAction={deleteUserAction} variant="danger">Eliminar</Button></>:<span className="text-sm text-neutral/40">Solo lectura</span>}</div></form>)}</div>
+        {canManage ? <CreateUserForm roles={roles} /> : null}
+        <div className="mt-5 overflow-hidden rounded-2xl border border-neutral/12 bg-white shadow-sm">
+          <div className="grid grid-cols-[1.2fr_1fr_.8fr_.8fr] gap-4 border-b border-neutral/10 bg-neutral/4 px-5 py-3 text-sm font-medium text-neutral/40">
+            <span>Usuario</span><span>Roles</span><span>Estado</span><span>Acciones</span>
+          </div>
+          {users.map((user) => (
+            <form key={user.userId} action={updateUserAction} className="grid grid-cols-[1.2fr_1fr_.8fr_.8fr] items-start gap-4 border-b border-neutral/10 px-5 py-4 last:border-b-0">
+              <input type="hidden" name="userId" value={user.userId} />
+              <div>
+                <TextField name="displayName" defaultValue={user.displayName} disabled={!canManage} className="font-medium" />
+                <div className="mt-1 text-sm text-neutral/40">{user.email}</div>
+                <TextField name="phone" type="tel" defaultValue={user.phone ?? ''} disabled={!canManage} placeholder="Teléfono" className="disabled:hidden" containerClassName="mt-2" />
+              </div>
+              <div className="space-y-1">
+                {roles.map((role) => (
+                  <Checkbox key={role.code} name="roles" value={role.code} defaultChecked={user.roles.includes(role.code)} disabled={!canManage} label={role.name} />
+                ))}
+              </div>
+              <Select name="status" defaultValue={user.status} disabled={!canManage}>
+                <option value="active">Activo</option>
+                <option value="disabled">Desactivado</option>
+              </Select>
+              <div className="flex flex-wrap gap-2">
+                {canManage ? (
+                  <>
+                    <Button type="submit">Guardar</Button>
+                    <Button type="submit" formAction={deleteUserAction} variant="danger">Eliminar</Button>
+                  </>
+                ) : (
+                  <span className="text-sm text-neutral/40">Solo lectura</span>
+                )}
+              </div>
+            </form>
+          ))}
+        </div>
       </>}
   </div></div>;
 }
@@ -55,7 +88,23 @@ function TabLink({ href, active, icon, label }: { href: string; active: boolean;
   return <Link href={href} className={`flex items-center gap-1.5 border-b-2 px-3 pb-2.5 text-sm font-medium transition ${active ? 'border-primary text-primary' : 'border-transparent text-neutral/60 hover:text-neutral'}`}>{icon}{label}</Link>;
 }
 
-function CreateUserForm({roles}:{roles:Array<{code:'admin'|'agent'|'receptionist';name:string;description?:string}>}) { return <form action={createUserAction} className="rounded-2xl border border-neutral/12 bg-white p-5 shadow-sm"><div className="mb-4 text-base font-semibold">Crear usuario</div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"><input name="displayName" required placeholder="Nombre" className="rounded-xl border border-neutral/15 px-3 py-2.5 text-sm"/><input name="email" type="email" required placeholder="Correo" className="rounded-xl border border-neutral/15 px-3 py-2.5 text-sm"/><input name="password" type="password" minLength={8} required placeholder="Contraseña temporal" autoComplete="new-password" className="rounded-xl border border-neutral/15 px-3 py-2.5 text-sm"/><input name="phone" placeholder="Teléfono" className="rounded-xl border border-neutral/15 px-3 py-2.5 text-sm"/></div><div className="mt-4 flex flex-wrap items-center gap-4">{roles.map((role)=><label key={role.code} className="flex items-center gap-2 text-sm"><input type="checkbox" name="roles" value={role.code}/>{role.name}</label>)}<Button type="submit" className="ml-auto">Crear usuario</Button></div></form> }
+function CreateUserForm({ roles }: { roles: Array<{ code: 'admin' | 'agent' | 'receptionist'; name: string; description?: string }> }) {
+  return (
+    <form action={createUserAction} className="rounded-2xl border border-neutral/12 bg-white p-5 shadow-sm">
+      <div className="mb-4 text-base font-semibold">Crear usuario</div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <TextField name="displayName" required placeholder="Nombre" />
+        <TextField name="email" type="email" required placeholder="Correo" />
+        <TextField name="password" type="password" minLength={8} required placeholder="Contraseña temporal" autoComplete="new-password" />
+        <TextField name="phone" type="tel" placeholder="Teléfono" />
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-4">
+        {roles.map((role) => <Checkbox key={role.code} name="roles" value={role.code} label={role.name} />)}
+        <Button type="submit" className="ml-auto">Crear usuario</Button>
+      </div>
+    </form>
+  );
+}
 
 function RolesTab({ roles, permissions }: { roles: RoleWithPermissions[]; permissions: PermissionOption[] }) {
   const groups = groupPermissionsByCategory(permissions);
@@ -73,10 +122,9 @@ function RoleCard({ role, groups }: { role: RoleWithPermissions; groups: Array<{
       {groups.map((group) => <div key={group.category}>
         <div className="mb-1.5 text-sm font-semibold uppercase tracking-[0.14em] text-neutral/40">{group.category}</div>
         <div className="space-y-1">
-          {group.items.map((permission) => <label key={permission.code} className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="permissions" value={permission.code} defaultChecked={role.permissions.includes(permission.code)} />
-            <span>{permission.name}</span>
-          </label>)}
+          {group.items.map((permission) => (
+            <Checkbox key={permission.code} name="permissions" value={permission.code} defaultChecked={role.permissions.includes(permission.code)} label={permission.name} />
+          ))}
         </div>
       </div>)}
     </div>

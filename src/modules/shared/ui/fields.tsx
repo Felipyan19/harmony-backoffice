@@ -4,8 +4,19 @@ export type TextFieldType = 'text' | 'email' | 'password' | 'tel' | 'number' | '
 export type FieldSize = 'sm' | 'lg';
 
 const wrapSizeClass: Record<FieldSize, string> = {
-  sm: 'h-9 gap-2 rounded-md px-3',
-  lg: 'min-h-13 gap-3 rounded-xl px-4',
+  sm: 'h-9 gap-2 rounded-md pl-3',
+  lg: 'min-h-13 gap-3 rounded-xl pl-4',
+};
+
+// Trailing padding shrinks when there's an end adornment (e.g. a show/hide-password
+// button) — that control already carries its own generous hit-area padding.
+const trailingPadClass: Record<FieldSize, string> = {
+  sm: 'pr-3',
+  lg: 'pr-4',
+};
+const trailingPadWithAdornmentClass: Record<FieldSize, string> = {
+  sm: 'pr-1',
+  lg: 'pr-1.5',
 };
 
 const inputSizeClass: Record<FieldSize, string> = {
@@ -42,7 +53,7 @@ export function TextField({
   return (
     <div className={containerClassName}>
       {label ? <label htmlFor={fieldId} className="mb-2 block text-sm font-medium text-neutral/80">{label}</label> : null}
-      <span className={`flex items-center border bg-neutral/4 text-neutral/40 transition focus-within:bg-white focus-within:ring-4 ${wrapSizeClass[size]} ${error ? 'border-danger/40 focus-within:border-danger/40 focus-within:ring-danger/12' : 'border-neutral/15 focus-within:border-primary/40 focus-within:ring-primary/12'}`}>
+      <span className={`flex items-center border bg-neutral/4 text-neutral/40 transition has-[:disabled]:border-transparent has-[:disabled]:bg-transparent focus-within:bg-white focus-within:ring-4 ${wrapSizeClass[size]} ${endAdornment ? trailingPadWithAdornmentClass[size] : trailingPadClass[size]} ${error ? 'border-danger/40 focus-within:border-danger/40 focus-within:ring-danger/12' : 'border-neutral/15 focus-within:border-primary/40 focus-within:ring-primary/12'}`}>
         {startAdornment}
         <input
           id={fieldId}
