@@ -35,12 +35,12 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
           <BrandIcon size={36} className="shrink-0 rounded-md" />
           <div className="min-w-0">
             <div className="truncate text-base font-semibold tracking-[-0.02em]">Harmony</div>
-            <div className="mt-0.5 text-sm text-white/45">Backoffice</div>
+            <div className="mt-0.5 text-base text-white/45">Backoffice</div>
           </div>
         </div>
 
         <nav className="px-2.5 py-4" aria-label="Principal">
-          <div className="mb-2 px-2.5 text-sm font-semibold uppercase tracking-[0.16em] text-white/30">Principal</div>
+          <div className="mb-2 px-2.5 text-base font-semibold uppercase tracking-[0.16em] text-white/30">Principal</div>
           <div className="space-y-1">
             {NAV_ITEMS.map((item) => (
               <SidebarLink
@@ -58,11 +58,11 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
         <div className="mt-auto border-t border-white/[0.07] px-2.5 pb-2.5 pt-3">
           <div className="mb-2 flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-white/80">
             <span className="relative flex h-2 w-2 shrink-0"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-30" /><span className="relative inline-flex h-2 w-2 rounded-full bg-primary" /></span>
-            <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-white/90">Harmony IA</div><div className="mt-0.5 text-sm text-white/40">Agente conectado</div></div>
+            <div className="min-w-0 flex-1"><div className="truncate text-base font-semibold text-white/90">Harmony IA</div><div className="mt-0.5 text-base text-white/40">Agente conectado</div></div>
           </div>
           <div className="flex items-center gap-2.5 rounded-lg border border-white/[0.07] bg-white/[0.035] px-2.5 py-2.5">
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-white/[0.08] text-sm font-semibold text-white">{user.initials}</div>
-            <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-white/90">{user.displayName}</div><div className="mt-0.5 text-sm text-white/40">{user.roleLabel}</div></div>
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-white/[0.08] text-base font-semibold text-white">{user.initials}</div>
+            <div className="min-w-0 flex-1"><div className="truncate text-base font-semibold text-white/90">{user.displayName}</div><div className="mt-0.5 text-base text-white/40">{user.roleLabel}</div></div>
             <button onClick={async () => { await authClient.signOut(); window.location.assign('/login'); }} aria-label="Cerrar sesión" title="Cerrar sesión" className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-white/35 transition hover:bg-white/[0.07] hover:text-white/80"><LogOut size={13} /></button>
           </div>
         </div>
@@ -88,7 +88,7 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
 
 function SidebarLink({ href, active, icon, label, badge }: { href: string; active: boolean; icon: ReactNode; label: string; badge?: number }) {
   return (
-    <Link href={href} className={`relative flex h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm font-medium transition ${active ? 'bg-white/[0.09] text-white' : 'text-white/55 hover:bg-white/[0.05] hover:text-white/90'}`}>
+    <Link href={href} className={`relative flex h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-base font-medium transition ${active ? 'bg-white/[0.09] text-white' : 'text-white/55 hover:bg-white/[0.05] hover:text-white/90'}`}>
       {active ? <span className="absolute inset-y-2 left-0 w-0.5 rounded-r-full bg-primary" /> : null}
       <span className={active ? 'text-white' : 'text-white/45'}>{icon}</span>
       <span className="flex-1 truncate">{label}</span>

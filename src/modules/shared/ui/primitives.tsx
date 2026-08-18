@@ -1,18 +1,5 @@
 import { Search } from 'lucide-react';
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
-import type { ConversationStatus } from '@/types/domain';
-
-export const statusLabel: Record<ConversationStatus, string> = {
-  open: 'Abierta',
-  pending: 'Pendiente',
-  resolved: 'Resuelta',
-};
-
-const statusClass: Record<ConversationStatus, string> = {
-  open: 'bg-primary/10 text-primary ring-1 ring-inset ring-primary/25',
-  pending: 'bg-warning/10 text-warning ring-1 ring-inset ring-warning/25',
-  resolved: 'bg-neutral/8 text-neutral/60 ring-1 ring-inset ring-neutral/15',
-};
+import type { ButtonHTMLAttributes, HTMLAttributes } from 'react';
 
 export function initials(name: string) {
   return name.split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase();
@@ -25,10 +12,6 @@ export function Avatar({ name, size = 'md' }: { name: string; size?: 'md' | 'lg'
     xl: 'h-16 w-16 text-lg',
   };
   return <div className={`grid shrink-0 place-items-center rounded-full bg-primary font-semibold text-white ${sizes[size]}`}>{initials(name)}</div>;
-}
-
-export function StatusBadge({ status }: { status: ConversationStatus }) {
-  return <span className={`rounded-full px-2 py-1 text-sm font-semibold ${statusClass[status]}`}>{statusLabel[status]}</span>;
 }
 
 export function SearchInput({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
@@ -57,14 +40,9 @@ export function Panel({ className = '', ...props }: HTMLAttributes<HTMLDivElemen
   return <div className={`rounded-lg border border-neutral/15 bg-white ${className}`} {...props} />;
 }
 
-/** Low-emphasis text chip. Used for free-form tags (e.g. customer tags). */
-export function Tag({ children }: { children: ReactNode }) {
-  return <span className="rounded-full bg-neutral/6 px-2.5 py-1 text-sm font-medium text-neutral/70 ring-1 ring-inset ring-neutral/12">{children}</span>;
-}
+export type ButtonVariant = 'primary' | 'neutral' | 'danger' | 'ghost';
 
-type ButtonVariant = 'primary' | 'neutral' | 'danger' | 'ghost';
-
-const buttonVariantClass: Record<ButtonVariant, string> = {
+export const buttonVariantClass: Record<ButtonVariant, string> = {
   primary: 'bg-primary text-white hover:bg-primary/85 disabled:bg-primary/40',
   neutral: 'border border-neutral/15 bg-white text-neutral/70 hover:bg-neutral/5 disabled:text-neutral/30',
   danger: 'border border-danger/25 bg-white text-danger hover:bg-danger/8 disabled:opacity-40',

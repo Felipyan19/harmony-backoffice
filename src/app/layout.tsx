@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ToastProvider } from "@/modules/shared/ui";
 import "./globals.css";
 
 const APP_URL =
@@ -34,7 +35,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }

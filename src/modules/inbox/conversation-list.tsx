@@ -1,6 +1,6 @@
-import { Check, Settings2 } from 'lucide-react';
+import { Check } from 'lucide-react';
 import type { Conversation, ConversationLabel, ConversationStatus, Customer } from '@/types/domain';
-import { Avatar, EmptyState, IconButton, Panel, SearchInput, StatusBadge } from '@/modules/shared/ui';
+import { Avatar, EmptyState, Panel, SearchInput, StatusBadge } from '@/modules/shared/ui';
 import { ConversationLabelBadge, ConversationLabelBulkBar, ConversationLabelFilterMenu } from './conversation-labels';
 
 export type InboxFilter = 'all' | ConversationStatus;
@@ -52,8 +52,7 @@ export function ConversationList({
           ))}
         </div>
         <div className="mt-2.5 flex items-center gap-2">
-          <ConversationLabelFilterMenu labels={labels} counts={labelCounts} selectedLabelIds={selectedLabelIds} onToggle={onToggleLabelFilter} onClear={onClearLabelFilter} />
-          <IconButton type="button" onClick={onManageLabels} variant="neutral" aria-label="Gestionar etiquetas" title="Gestionar etiquetas"><Settings2 size={15} /></IconButton>
+          <ConversationLabelFilterMenu labels={labels} counts={labelCounts} selectedLabelIds={selectedLabelIds} onToggle={onToggleLabelFilter} onClear={onClearLabelFilter} onManageLabels={onManageLabels} />
           <button type="button" onClick={onToggleSelectionMode} className={`h-10 shrink-0 rounded-md border px-3 text-sm font-medium transition ${selectionMode ? 'border-primary/40 bg-primary/8 text-primary' : 'border-neutral/15 bg-white text-neutral/70 hover:bg-neutral/5'}`}>
             {selectionMode ? 'Cancelar' : 'Seleccionar'}
           </button>

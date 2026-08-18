@@ -30,10 +30,11 @@
   /*
    * Hierarchy — pick by role, never by "what looks right here":
    * text-lg   → page-level <h1> only (page title, login welcome title)
-   * text-base → section <h3> subheadings, and primary/emphasized content
-   *             (customer names, message text, form inputs)
-   * text-sm   → everything else (meta, timestamps, badges, nav labels,
-   *             secondary text) — the default for body copy
+   * text-base → section <h3> subheadings, primary/emphasized content
+   *             (customer names, message text, form inputs), and the
+   *             sidebar chrome (nav labels, brand, user/agent block)
+   * text-sm   → everything else (meta, timestamps, badges, secondary text)
+   *             — the default for body copy
    * Weight/color/opacity carry emphasis within a size; never reach for a
    * 4th size (incl. an untagged element that falls back to the browser
    * default) to make something "stand out" a bit more.
