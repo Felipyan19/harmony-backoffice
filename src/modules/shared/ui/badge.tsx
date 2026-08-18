@@ -54,9 +54,10 @@ export function StatusBadge({ status }: { status: ConversationStatus }) {
 }
 
 /** Small solid-filled counter pill — nav badges, unread counts. Renders nothing for count <= 0. */
-export function CountBadge({ count, className = '' }: { count: number; className?: string }) {
+export function CountBadge({ count, tone = 'primary', className = '' }: { count: number; tone?: 'primary' | 'gold'; className?: string }) {
   if (count <= 0) return null;
-  return <span className={`grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-1.5 text-sm font-bold text-white ${className}`}>{count}</span>;
+  const toneClass = tone === 'gold' ? 'bg-label-gold' : 'bg-primary';
+  return <span className={`grid h-[18px] min-w-[18px] place-items-center rounded-full ${toneClass} px-1.5 text-sm font-bold text-white ${className}`}>{count}</span>;
 }
 
 /** Solid single-color swatch — used by the label color picker, not a Badge (it's a button, not a display chip). */

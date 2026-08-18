@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, ReactNode } from 'react';
 
 export type TextFieldType = 'text' | 'email' | 'password' | 'tel' | 'number' | 'date' | 'search';
 export type FieldSize = 'sm' | 'lg';
@@ -69,34 +69,6 @@ export function TextField({
       </span>
       {error ? <p id={messageId} role="alert" className="mt-1 text-sm text-danger">{error}</p>
         : hint ? <p id={messageId} className="mt-1 text-sm text-neutral/40">{hint}</p> : null}
-    </div>
-  );
-}
-
-export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string;
-  hint?: string;
-  error?: string;
-  containerClassName?: string;
-}
-
-export function Select({ label, hint, error, containerClassName = '', className = '', id, name, children, ...props }: SelectProps) {
-  const fieldId = id ?? name;
-
-  return (
-    <div className={containerClassName}>
-      {label ? <label htmlFor={fieldId} className="mb-2 block text-sm font-medium text-neutral/80">{label}</label> : null}
-      <select
-        id={fieldId}
-        name={name}
-        aria-invalid={error ? true : undefined}
-        className={`h-9 rounded-md border bg-neutral/4 px-3 text-sm font-medium text-neutral/80 outline-none transition focus:bg-white focus:ring-4 ${error ? 'border-danger/40 focus:border-danger/40 focus:ring-danger/12' : 'border-neutral/15 focus:border-primary/40 focus:ring-primary/12'} ${className}`}
-        {...props}
-      >
-        {children}
-      </select>
-      {error ? <p role="alert" className="mt-1 text-sm text-danger">{error}</p>
-        : hint ? <p className="mt-1 text-sm text-neutral/40">{hint}</p> : null}
     </div>
   );
 }

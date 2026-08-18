@@ -8,4 +8,5 @@ export * from './badge';
 export * from './fields';
 export * from './modal';
 export * from './popover';
+export * from './select';
 export * from './toast';

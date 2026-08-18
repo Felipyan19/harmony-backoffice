@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
@@ -10,21 +10,29 @@ const INVALID_MESSAGE = 'Correo o contraseña incorrectos.';
 const FALLBACK_MESSAGE = 'No fue posible iniciar sesión. Intenta nuevamente.';
 const REMEMBERED_EMAIL_KEY = 'harmony:remembered-email';
 
+function subscribeToStorage(onStoreChange: () => void) {
+  window.addEventListener('storage', onStoreChange);
+  return () => window.removeEventListener('storage', onStoreChange);
+}
+
+function getRememberedEmail() {
+  try {
+    return window.localStorage.getItem(REMEMBERED_EMAIL_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function getServerRememberedEmail() {
+  return '';
+}
+
 export function LoginForm() {
   const router = useRouter();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [email, setEmail] = useState('');
-
-  useEffect(() => {
-    const rememberedEmail = window.localStorage.getItem(REMEMBERED_EMAIL_KEY);
-    if (!rememberedEmail) return;
-
-    setEmail(rememberedEmail);
-    setRememberMe(true);
-  }, []);
+  const rememberedEmail = useSyncExternalStore(subscribeToStorage, getRememberedEmail, getServerRememberedEmail);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,6 +43,7 @@ export function LoginForm() {
       const form = new FormData(event.currentTarget);
       const normalizedEmail = String(form.get('email') ?? '').trim().toLowerCase();
       const password = String(form.get('password') ?? '');
+      const rememberMe = form.get('rememberMe') === 'on';
 
       const result = await signIn('credentials', {
         email: normalizedEmail,
@@ -77,8 +86,7 @@ export function LoginForm() {
         spellCheck={false}
         required
         placeholder="usuario@harmony.com"
-        value={email}
-        onChange={(event) => setEmail(event.target.value)}
+        defaultValue={rememberedEmail}
       />
 
       <TextField
@@ -107,9 +115,9 @@ export function LoginForm() {
 
       <div className="flex items-center justify-between gap-3 py-0.5">
         <Checkbox
+          name="rememberMe"
           label="Recordarme en este dispositivo"
-          checked={rememberMe}
-          onChange={(event) => setRememberMe(event.target.checked)}
+          defaultChecked={Boolean(rememberedEmail)}
         />
       </div>
 
@@ -122,7 +130,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="flex min-h-13 w-full items-center justify-center rounded-xl bg-primary px-4 text-base font-semibold text-white shadow-sm transition hover:bg-primary/85 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex min-h-13 w-full items-center justify-center rounded-xl bg-[var(--color-primary-dark)] px-4 text-base font-semibold text-white shadow-sm transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? 'Ingresando…' : 'Ingresar al backoffice'}
       </button>

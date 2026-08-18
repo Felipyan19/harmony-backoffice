@@ -6,7 +6,8 @@ import { ReactNode } from 'react';
 import { Bell, Inbox, LogOut, ShieldCheck, Users } from 'lucide-react';
 import { BrandIcon } from '@/components/brand-icon';
 import { authClient } from '@/lib/auth/client';
-import { Badge, CountBadge } from '@/modules/shared/ui';
+import { customers } from '@/lib/mock-data';
+import { CountBadge, Popover } from '@/modules/shared/ui';
 import { useBackofficeState } from './backoffice-context';
 
 const NAV_ITEMS = [
@@ -25,7 +26,7 @@ type ShellUser = { displayName: string; roleLabel: string; initials: string };
 
 export function BackofficeShell({ children, user }: { children: ReactNode; user: ShellUser }) {
   const pathname = usePathname();
-  const { unreadCount, pendingCount } = useBackofficeState();
+  const { conversations, unreadCount } = useBackofficeState();
 
   const pageMeta = PAGE_META[pathname] ?? { title: '', subtitle: '' };
 
@@ -76,7 +77,26 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
             <p className="mt-0.5 hidden text-sm text-neutral/60 sm:block">{pageMeta.subtitle}</p>
           </div>
           <div className="flex items-center gap-2.5">
-            <button className="hidden h-9 items-center gap-2 rounded-md border border-neutral/15 bg-white px-3 text-sm font-medium text-neutral/70 sm:flex"><Bell size={15} /><Badge tone="warning" compact>{pendingCount} pendientes</Badge></button>
+            <Popover
+              align="right"
+              panelClassName="top-11 w-80 max-w-[calc(100vw-2rem)]"
+              renderTrigger={({ open, onClick }) => (
+                <button
+                  type="button"
+                  onClick={onClick}
+                  aria-label={unreadCount > 0 ? `Notificaciones, ${unreadCount} mensajes sin leer` : 'Notificaciones'}
+                  aria-haspopup="dialog"
+                  aria-expanded={open}
+                  title="Notificaciones"
+                  className={`relative grid h-9 w-9 place-items-center rounded-md transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/12 ${open ? 'bg-neutral/8 text-neutral' : 'text-neutral/50 hover:bg-neutral/5 hover:text-neutral'}`}
+                >
+                  <Bell size={17} />
+                  {unreadCount > 0 ? <span aria-hidden="true" className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-label-gold ring-2 ring-white" /> : null}
+                </button>
+              )}
+            >
+              {({ close }) => <NotificationTray conversations={conversations} onClose={close} />}
+            </Popover>
             <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-sm font-semibold text-white">{user.initials}</div>
           </div>
         </header>
@@ -87,13 +107,57 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
   );
 }
 
+function NotificationTray({ conversations, onClose }: { conversations: ReturnType<typeof useBackofficeState>['conversations']; onClose: () => void }) {
+  const unreadConversations = conversations.filter((conversation) => conversation.unreadCount > 0).slice(0, 6);
+
+  return (
+    <div>
+      <div className="flex items-start justify-between border-b border-neutral/10 px-4 py-3.5">
+        <div>
+          <strong className="block text-base font-semibold text-neutral">Notificaciones</strong>
+          <span className="mt-1 block text-sm text-neutral/40">{unreadConversations.length > 0 ? `${unreadConversations.length} conversaciones con mensajes nuevos` : 'Todo al día'}</span>
+        </div>
+        <Bell size={16} className="mt-0.5 text-label-gold" aria-hidden="true" />
+      </div>
+
+      {unreadConversations.length === 0 ? (
+        <div className="px-5 py-8 text-center">
+          <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-neutral/8 text-neutral/35"><Bell size={17} /></div>
+          <p className="mt-3 text-sm font-medium text-neutral/60">No tienes notificaciones nuevas.</p>
+        </div>
+      ) : (
+        <div className="max-h-80 overflow-y-auto p-2">
+          {unreadConversations.map((conversation) => {
+            const customer = customers.find((item) => item.id === conversation.customerId);
+            const lastMessage = conversation.messages.at(-1);
+            return (
+              <Link key={conversation.id} href="/conversaciones" onClick={onClose} className="flex items-start gap-3 rounded-md px-2.5 py-2.5 transition hover:bg-neutral/5">
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-label-gold" aria-hidden="true" />
+                <span className="min-w-0 flex-1">
+                  <strong className="block truncate text-sm font-semibold text-neutral">{customer?.name ?? 'Nueva conversación'}</strong>
+                  <span className="mt-0.5 block truncate text-sm text-neutral/50">{lastMessage?.content ?? 'Tiene mensajes nuevos.'}</span>
+                </span>
+                <span className="shrink-0 pt-0.5 text-sm font-semibold text-label-gold">{conversation.unreadCount}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      <Link href="/conversaciones" onClick={onClose} className="flex items-center justify-center border-t border-neutral/10 px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary/5">
+        Ver conversaciones
+      </Link>
+    </div>
+  );
+}
+
 function SidebarLink({ href, active, icon, label, badge = 0 }: { href: string; active: boolean; icon: ReactNode; label: string; badge?: number }) {
   return (
     <Link href={href} className={`relative flex h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-base font-medium transition ${active ? 'bg-white/[0.09] text-white' : 'text-white/55 hover:bg-white/[0.05] hover:text-white/90'}`}>
       {active ? <span className="absolute inset-y-2 left-0 w-0.5 rounded-r-full bg-primary" /> : null}
       <span className={active ? 'text-white' : 'text-white/45'}>{icon}</span>
       <span className="flex-1 truncate">{label}</span>
-      <CountBadge count={badge} />
+      <CountBadge count={badge} tone="gold" />
     </Link>
   );
 }

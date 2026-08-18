@@ -15,8 +15,10 @@ import { ConversationList, type InboxFilter } from '@/modules/inbox/conversation
 import { ChatPanel } from '@/modules/inbox/chat-panel';
 import { CustomerDetails } from '@/modules/customers/customer-details';
 import { LabelManagerDialog } from '@/modules/inbox/label-manager';
-import { Avatar, Panel, SearchInput, Tag } from '@/modules/shared/ui';
+import { Avatar, Badge, Panel, SearchInput } from '@/modules/shared/ui';
 import { useBackofficeState } from './backoffice-context';
+
+const messageTimeFormatter = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' });
 
 export function ConversationsPageContent() {
   const router = useRouter();
@@ -72,7 +74,7 @@ export function ConversationsPageContent() {
       direction: 'outgoing' as const,
       senderType: 'agent' as const,
       senderName: 'Atención Harmony',
-      createdAt: new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' }).format(new Date()),
+      createdAt: messageTimeFormatter.format(new Date()),
       status: 'sent' as const,
     };
     setConversations((current) => current.map((conversation) => conversation.id === selectedConversation.id ? { ...conversation, status: 'open', assignedTo: 'Atención Harmony', lastMessageAt: 'Ahora', messages: [...conversation.messages, nextMessage] } : conversation));
@@ -120,10 +122,8 @@ export function ConversationsPageContent() {
   }
 
   function toggleSelectionMode() {
-    setSelectionMode((current) => {
-      if (current) setSelectedConversationIds(new Set());
-      return !current;
-    });
+    if (selectionMode) setSelectedConversationIds(new Set());
+    setSelectionMode(!selectionMode);
   }
 
   function toggleConversationSelection(conversationId: string) {
@@ -265,7 +265,7 @@ function CustomersTable({ customers: rows, selectedCustomerId, conversations, qu
             <button key={customer.id} onClick={() => onSelect(customer)} className={`grid w-full grid-cols-[1.1fr_1fr_1fr_.7fr_24px] items-center gap-4 border-b border-neutral/10 px-5 py-4 text-left transition last:border-b-0 ${selectedCustomerId === customer.id ? 'bg-primary/6' : 'hover:bg-neutral/4'}`}>
               <span className="flex items-center gap-3"><Avatar name={customer.name} /><strong className="truncate text-base">{customer.name}</strong></span>
               <span className="min-w-0 text-sm text-neutral/60"><span className="block truncate">{customer.phone}</span><span className="mt-1 block truncate text-neutral/40">{customer.email ?? 'Sin correo'}</span></span>
-              <span className="flex flex-wrap gap-1">{customer.tags.slice(0, 2).map((tag) => <Tag key={tag}>{tag}</Tag>)}</span>
+              <span className="flex flex-wrap gap-1">{customer.tags.slice(0, 2).map((tag) => <Badge key={tag} compact>{tag}</Badge>)}</span>
               <span className="text-sm text-neutral/40">{customer.lastSeen}</span>
               <ChevronRight size={16} className="text-neutral/30" />
             </button>

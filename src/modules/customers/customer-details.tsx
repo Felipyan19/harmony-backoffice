@@ -1,6 +1,6 @@
 import { ChevronRight, UserRound } from 'lucide-react';
 import type { Conversation, Customer } from '@/types/domain';
-import { Avatar, Tag } from '@/modules/shared/ui';
+import { Avatar, Badge } from '@/modules/shared/ui';
 
 export function CustomerDetails({ customer, conversation, onOpenCustomers, compact = false }: {
   customer: Customer;
@@ -26,7 +26,7 @@ export function CustomerDetails({ customer, conversation, onOpenCustomers, compa
       </section>
       <section className="border-b border-neutral/10 px-5 py-4">
         <h3 className="mb-3 text-base font-semibold text-neutral">Etiquetas</h3>
-        <div className="flex flex-wrap gap-1.5">{customer.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)}</div>
+        <div className="flex flex-wrap gap-1.5">{customer.tags.map((tag) => <Badge key={tag}>{tag}</Badge>)}</div>
       </section>
       <section className="border-b border-neutral/10 px-5 py-4">
         <h3 className="mb-3 text-base font-semibold text-neutral">Notas internas</h3>

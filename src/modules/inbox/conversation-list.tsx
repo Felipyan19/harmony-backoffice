@@ -44,16 +44,16 @@ export function ConversationList({
     <Panel className="flex min-h-[540px] flex-col overflow-hidden xl:min-h-0">
       <div className="border-b border-neutral/10 p-3.5">
         <SearchInput value={query} onChange={onQueryChange} placeholder="Buscar cliente o mensaje..." />
-        <div className="mt-3 flex gap-1 rounded-lg bg-neutral/8 p-1">
+        <div className="mt-3 grid grid-cols-[.85fr_1fr_1.2fr_1fr] rounded-lg bg-neutral/8 p-1">
           {(['all', 'open', 'pending', 'resolved'] as InboxFilter[]).map((item) => (
-            <button key={item} onClick={() => onFilterChange(item)} className={`flex-1 whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium transition ${filter === item ? 'bg-white text-primary ring-1 ring-neutral/12' : 'text-neutral/60 hover:text-neutral'}`}>
+            <button key={item} type="button" onClick={() => onFilterChange(item)} aria-pressed={filter === item} className={`min-w-0 whitespace-nowrap rounded-md px-0.5 h-9 text-[11px] font-medium transition ${filter === item ? 'bg-white text-primary ring-1 ring-neutral/12' : 'text-neutral/60 hover:text-neutral'}`}>
               {filterLabel[item]}
             </button>
           ))}
         </div>
         <div className="mt-2.5 flex items-center gap-2">
           <ConversationLabelFilterMenu labels={labels} counts={labelCounts} selectedLabelIds={selectedLabelIds} onToggle={onToggleLabelFilter} onClear={onClearLabelFilter} onManageLabels={onManageLabels} />
-          <button type="button" onClick={onToggleSelectionMode} className={`h-10 shrink-0 rounded-md border px-3 text-sm font-medium transition ${selectionMode ? 'border-primary/40 bg-primary/8 text-primary' : 'border-neutral/15 bg-white text-neutral/70 hover:bg-neutral/5'}`}>
+          <button type="button" onClick={onToggleSelectionMode} className={`h-9 shrink-0 rounded-md border px-3 text-[11px] font-medium transition ${selectionMode ? 'border-primary/40 bg-primary/8 text-primary' : 'border-neutral/15 bg-white text-neutral/70 hover:bg-neutral/5'}`}>
             {selectionMode ? 'Cancelar' : 'Seleccionar'}
           </button>
         </div>

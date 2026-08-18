@@ -5,7 +5,10 @@ import { useEffect, useRef, type RefObject } from 'react';
 /** Fires `onOutside` on pointerdown outside `ref`. Listens via useEffect only — never touches the DOM during render. */
 export function useClickOutside(ref: RefObject<HTMLElement | null>, onOutside: () => void, enabled = true) {
   const onOutsideRef = useRef(onOutside);
-  onOutsideRef.current = onOutside;
+
+  useEffect(() => {
+    onOutsideRef.current = onOutside;
+  }, [onOutside]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -21,7 +24,10 @@ export function useClickOutside(ref: RefObject<HTMLElement | null>, onOutside: (
 
 export function useEscapeKey(onEscape: () => void, enabled = true) {
   const onEscapeRef = useRef(onEscape);
-  onEscapeRef.current = onEscape;
+
+  useEffect(() => {
+    onEscapeRef.current = onEscape;
+  }, [onEscape]);
 
   useEffect(() => {
     if (!enabled) return;

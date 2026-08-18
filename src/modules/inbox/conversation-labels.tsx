@@ -72,8 +72,9 @@ export function ConversationLabelFilterMenu({ labels, counts, selectedLabelIds, 
     <Popover
       align="left"
       panelClassName="top-11 w-64"
+      containerClassName="min-w-0 flex-1"
       renderTrigger={({ open, onClick }) => (
-        <button type="button" onClick={onClick} aria-haspopup="true" aria-expanded={open} className="flex h-10 items-center gap-2 rounded-md border border-neutral/15 bg-white px-3 text-sm font-medium text-neutral/70 transition hover:bg-neutral/5">
+        <button type="button" onClick={onClick} aria-haspopup="true" aria-expanded={open} className="flex h-9 w-full min-w-0 items-center gap-1.5 rounded-md border border-neutral/15 bg-white px-2 text-[11px] font-medium text-neutral/70 transition hover:bg-neutral/5">
           <Tags size={14} className="shrink-0 text-neutral/40" />
           <span className="min-w-0 flex-1 truncate text-left">
             {selectedCount === 0 ? 'Todas las etiquetas' : selectedCount === 1 ? labels.find((label) => label.id === selectedLabelIds[0])?.name ?? 'Todas las etiquetas' : `${selectedCount} etiquetas`}

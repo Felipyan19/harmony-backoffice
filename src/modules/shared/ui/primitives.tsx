@@ -43,7 +43,7 @@ export function Panel({ className = '', ...props }: HTMLAttributes<HTMLDivElemen
 export type ButtonVariant = 'primary' | 'neutral' | 'danger' | 'ghost';
 
 export const buttonVariantClass: Record<ButtonVariant, string> = {
-  primary: 'bg-primary text-white hover:bg-primary/85 disabled:bg-primary/40',
+  primary: 'bg-[var(--color-primary-dark)] text-white hover:brightness-110 disabled:opacity-50',
   neutral: 'border border-neutral/15 bg-white text-neutral/70 hover:bg-neutral/5 disabled:text-neutral/30',
   danger: 'border border-danger/25 bg-white text-danger hover:bg-danger/8 disabled:opacity-40',
   ghost: 'text-neutral/40 hover:bg-neutral/8 hover:text-neutral/70 disabled:opacity-40',
