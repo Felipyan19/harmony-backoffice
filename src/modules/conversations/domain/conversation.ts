@@ -13,9 +13,12 @@ export interface ConversationLabel {
 export interface Message {
   id: string;
   conversationId: string;
+  externalId?: string;
   content: string;
   direction: MessageDirection;
   senderType: SenderType;
+  senderProfileId?: string;
+  senderMembershipId?: string;
   senderName: string;
   createdAt: string;
   status?: 'sent' | 'delivered' | 'read';
