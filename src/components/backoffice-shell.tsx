@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
-import { Bell, Inbox, LogOut, ShieldCheck, Users } from 'lucide-react';
+import { Bell, Inbox, LayoutDashboard, LogOut, ShieldCheck, Users } from 'lucide-react';
 import { BrandIcon } from '@/components/brand-icon';
 import { authClient } from '@/lib/auth/client';
 import { customers } from '@/lib/mock-data';
@@ -11,12 +11,14 @@ import { CountBadge, Popover } from '@/modules/shared/ui';
 import { useBackofficeState } from './backoffice-context';
 
 const NAV_ITEMS = [
+  { href: '/', label: 'Inicio', icon: LayoutDashboard, withUnreadBadge: false },
   { href: '/conversaciones', label: 'Conversaciones', icon: Inbox, withUnreadBadge: true },
   { href: '/clientes', label: 'Clientes', icon: Users, withUnreadBadge: false },
   { href: '/usuarios', label: 'Usuarios', icon: ShieldCheck, withUnreadBadge: false },
 ] as const;
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
+  '/': { title: 'Inicio', subtitle: 'Resumen operativo de la atención en Harmony' },
   '/conversaciones': { title: 'Conversaciones', subtitle: 'Gestiona y responde las conversaciones de tus clientes' },
   '/clientes': { title: 'Clientes', subtitle: 'Consulta y organiza la información de tus clientes' },
   '/usuarios': { title: 'Usuarios', subtitle: 'Administra accesos, perfiles y roles del equipo Harmony.' },
