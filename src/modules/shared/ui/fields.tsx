@@ -1,6 +1,6 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
 
-export type TextFieldType = 'text' | 'email' | 'password' | 'tel' | 'number' | 'date' | 'search';
+export type TextFieldType = 'text' | 'email' | 'password' | 'tel' | 'number' | 'date' | 'search' | 'url';
 export type FieldSize = 'sm' | 'lg';
 
 const wrapSizeClass: Record<FieldSize, string> = {
@@ -36,7 +36,7 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
 }
 
 /**
- * Single field component for text/email/password/tel/number/date/search —
+ * Single field component for text/email/password/tel/number/date/search/url —
  * the differences between those types are a handful of HTML attributes, not
  * enough divergence to justify separate components per type. No useId(): id
  * falls back to `name`, which every field in this app already has (Server
