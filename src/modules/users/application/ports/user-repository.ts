@@ -19,11 +19,11 @@ export interface UpdateInternalUserInput {
 }
 
 export interface UserRepository {
-  list(): Promise<BackofficeUser[]>;
+  list(workspaceId: string): Promise<BackofficeUser[]>;
   listRoles(): Promise<RoleOption[]>;
-  create(input: CreateInternalUserInput): Promise<BackofficeUser>;
-  update(userId: string, input: UpdateInternalUserInput): Promise<BackofficeUser>;
-  remove(userId: string): Promise<void>;
-  findByUserId(userId: string): Promise<BackofficeUser | null>;
-  writeAudit(actorProfileId: string, action: string, resourceId: string, metadata?: Record<string, unknown>): Promise<void>;
+  create(workspaceId: string, input: CreateInternalUserInput): Promise<BackofficeUser>;
+  update(workspaceId: string, userId: string, input: UpdateInternalUserInput): Promise<BackofficeUser>;
+  remove(workspaceId: string, userId: string): Promise<void>;
+  findByUserId(workspaceId: string, userId: string): Promise<BackofficeUser | null>;
+  writeAudit(workspaceId: string, actorProfileId: string, action: string, resourceId: string, metadata?: Record<string, unknown>): Promise<void>;
 }

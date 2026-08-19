@@ -2,10 +2,10 @@ import 'server-only';
 
 import { cache } from 'react';
 import { rolePermissionService } from '@/composition/access';
-import { requirePermission } from './auth';
+import { requirePlatformStaff } from './auth';
 
 export const getRolesPageData = cache(async () => {
-  await requirePermission('roles.manage');
+  await requirePlatformStaff(['owner', 'admin']);
   const [roles, permissions] = await Promise.all([
     rolePermissionService.listRoles(),
     rolePermissionService.listPermissions(),

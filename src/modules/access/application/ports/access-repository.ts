@@ -1,7 +1,7 @@
-import type { AccessProfile, PermissionCode, RoleCode } from '../../domain/access';
+import type { AccessProfile, PermissionCode } from '../../domain/access';
 
 export interface AccessRepository {
-  getByUserId(userId: string): Promise<AccessProfile | null>;
-  hasPermission(profileId: string, permission: PermissionCode): Promise<boolean>;
-  assignRole(profileId: string, role: RoleCode, assignedBy?: string): Promise<void>;
+  getIdentityByUserId(userId: string): Promise<AccessProfile | null>;
+  getByUserId(userId: string, workspaceId: string): Promise<AccessProfile | null>;
+  hasPermission(profileId: string, workspaceId: string, permission: PermissionCode): Promise<boolean>;
 }

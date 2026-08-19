@@ -8,12 +8,12 @@ export class UserAdminService {
     private readonly passwordHasher: PasswordHasher,
   ) {}
 
-  list() { return this.users.list(); }
+  list(workspaceId: string) { return this.users.list(workspaceId); }
   listRoles() { return this.users.listRoles(); }
 
-  async create(input: { email: string; password: string; displayName: string; phone?: string; roles: RoleCode[]; actorProfileId: string }) {
+  async create(workspaceId: string, input: { email: string; password: string; displayName: string; phone?: string; roles: RoleCode[]; actorProfileId: string }) {
     const passwordHash = await this.passwordHasher.hash(input.password);
-    const user = await this.users.create({
+    const user = await this.users.create(workspaceId, {
       email: input.email,
       passwordHash,
       displayName: input.displayName,
@@ -21,22 +21,22 @@ export class UserAdminService {
       roles: input.roles,
       actorProfileId: input.actorProfileId,
     });
-    await this.users.writeAudit(input.actorProfileId, 'user.created', user.userId, { roles: input.roles });
+    await this.users.writeAudit(workspaceId, input.actorProfileId, 'user.created', user.userId, { roles: input.roles });
     return user;
   }
 
-  async update(userId: string, input: { displayName: string; phone?: string; status: 'active' | 'disabled'; roles: RoleCode[]; actorProfileId: string }) {
-    const current = await this.users.findByUserId(userId);
-    if (!current) throw new Error('Usuario no encontrado');
-    const user = await this.users.update(userId, input);
-    await this.users.writeAudit(input.actorProfileId, 'user.updated', userId, { status: input.status, roles: input.roles });
+  async update(workspaceId: string, userId: string, input: { displayName: string; phone?: string; status: 'active' | 'disabled'; roles: RoleCode[]; actorProfileId: string }) {
+    const current = await this.users.findByUserId(workspaceId, userId);
+    if (!current) throw new Error('Usuario no encontrado en este negocio');
+    const user = await this.users.update(workspaceId, userId, input);
+    await this.users.writeAudit(workspaceId, input.actorProfileId, 'user.updated', userId, { status: input.status, roles: input.roles });
     return user;
   }
 
-  async remove(userId: string, actorProfileId: string) {
-    const current = await this.users.findByUserId(userId);
+  async remove(workspaceId: string, userId: string, actorProfileId: string) {
+    const current = await this.users.findByUserId(workspaceId, userId);
     if (!current) return;
-    await this.users.writeAudit(actorProfileId, 'user.deleted', userId, { email: current.email });
-    await this.users.remove(userId);
+    await this.users.writeAudit(workspaceId, actorProfileId, 'user.removed_from_workspace', userId, { email: current.email });
+    await this.users.remove(workspaceId, userId);
   }
 }
