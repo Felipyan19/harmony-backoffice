@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requirePermission } from '@/lib/dal/auth';
+import { getCurrentWorkspaceContext, requirePermission } from '@/lib/dal/auth';
 import { userAdminService } from '@/composition/users';
 import { createUserSchema, deleteUserSchema, updateUserSchema } from '@/modules/users/application/user-input';
 
@@ -10,7 +10,7 @@ function getRoles(formData: FormData) {
 }
 
 export async function createUserAction(formData: FormData) {
-  const actor = await requirePermission('users.manage');
+  const [actor, workspace] = await Promise.all([requirePermission('users.manage'), getCurrentWorkspaceContext()]);
   const input = createUserSchema.parse({
     displayName: formData.get('displayName'),
     email: formData.get('email'),
@@ -19,12 +19,12 @@ export async function createUserAction(formData: FormData) {
     roles: getRoles(formData),
   });
 
-  await userAdminService.create({ ...input, actorProfileId: actor.profileId });
+  await userAdminService.create(workspace.current.id, { ...input, actorProfileId: actor.profileId });
   revalidatePath('/usuarios');
 }
 
 export async function updateUserAction(formData: FormData) {
-  const actor = await requirePermission('users.manage');
+  const [actor, workspace] = await Promise.all([requirePermission('users.manage'), getCurrentWorkspaceContext()]);
   const input = updateUserSchema.parse({
     userId: formData.get('userId'),
     displayName: formData.get('displayName'),
@@ -34,10 +34,10 @@ export async function updateUserAction(formData: FormData) {
   });
 
   if (input.userId === actor.userId && input.status === 'disabled') {
-    throw new Error('No puedes desactivar tu propio usuario');
+    throw new Error('No puedes desactivar tu propia membresía');
   }
 
-  await userAdminService.update(input.userId, {
+  await userAdminService.update(workspace.current.id, input.userId, {
     displayName: input.displayName,
     phone: input.phone,
     status: input.status,
@@ -48,11 +48,11 @@ export async function updateUserAction(formData: FormData) {
 }
 
 export async function deleteUserAction(formData: FormData) {
-  const actor = await requirePermission('users.manage');
+  const [actor, workspace] = await Promise.all([requirePermission('users.manage'), getCurrentWorkspaceContext()]);
   const input = deleteUserSchema.parse({ userId: formData.get('userId') });
 
-  if (input.userId === actor.userId) throw new Error('No puedes eliminar tu propio usuario');
+  if (input.userId === actor.userId) throw new Error('No puedes quitarte del negocio actual');
 
-  await userAdminService.remove(input.userId, actor.profileId);
+  await userAdminService.remove(workspace.current.id, input.userId, actor.profileId);
   revalidatePath('/usuarios');
 }

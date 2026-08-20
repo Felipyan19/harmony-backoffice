@@ -1,11 +1,11 @@
 'use client';
 
 import { createContext, useContext, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
-import { customers, initialConversationLabels, initialConversations } from '@/lib/mock-data';
-import type { Conversation, ConversationLabel } from '@/types/domain';
+import type { Conversation, ConversationLabel, Customer } from '@/types/domain';
 import { countConversationsByLabel } from '@/modules/conversations/domain/conversation-labels';
 
 interface BackofficeContextValue {
+  customers: Customer[];
   conversations: Conversation[];
   setConversations: Dispatch<SetStateAction<Conversation[]>>;
   labels: ConversationLabel[];
@@ -25,11 +25,21 @@ interface BackofficeContextValue {
 
 const BackofficeContext = createContext<BackofficeContextValue | null>(null);
 
-export function BackofficeStateProvider({ children }: { children: ReactNode }) {
+export function BackofficeStateProvider({
+  children,
+  initialCustomers = [],
+  initialConversations = [],
+  initialLabels = [],
+}: {
+  children: ReactNode;
+  initialCustomers?: Customer[];
+  initialConversations?: Conversation[];
+  initialLabels?: ConversationLabel[];
+}) {
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
-  const [labels, setLabels] = useState<ConversationLabel[]>(initialConversationLabels);
-  const [selectedConversationId, setSelectedConversationId] = useState(initialConversations[0].id);
-  const [selectedCustomerId, setSelectedCustomerId] = useState(customers[0].id);
+  const [labels, setLabels] = useState<ConversationLabel[]>(initialLabels);
+  const [selectedConversationId, setSelectedConversationId] = useState(initialConversations[0]?.id ?? '');
+  const [selectedCustomerId, setSelectedCustomerId] = useState(initialCustomers[0]?.id ?? '');
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
 
   const labelCounts = useMemo(() => {
@@ -50,6 +60,7 @@ export function BackofficeStateProvider({ children }: { children: ReactNode }) {
   }
 
   const value: BackofficeContextValue = {
+    customers: initialCustomers,
     conversations,
     setConversations,
     labels,

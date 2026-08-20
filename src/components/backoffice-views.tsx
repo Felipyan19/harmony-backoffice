@@ -3,7 +3,6 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
-import { customers } from '@/lib/mock-data';
 import type { Conversation, ConversationLabel, ConversationLabelColor, ConversationStatus, Customer } from '@/types/domain';
 import {
   findConversationLabelByName,
@@ -23,6 +22,7 @@ const messageTimeFormatter = new Intl.DateTimeFormat('es-CO', { hour: '2-digit',
 export function ConversationsPageContent() {
   const router = useRouter();
   const {
+    customers,
     conversations, setConversations,
     labels, setLabels,
     selectedConversationId, setSelectedConversationId,
@@ -39,7 +39,9 @@ export function ConversationsPageContent() {
   const [labelManagerOpen, setLabelManagerOpen] = useState(false);
 
   const selectedConversation = conversations.find((item) => item.id === selectedConversationId) ?? conversations[0];
-  const selectedCustomer = customers.find((item) => item.id === selectedConversation.customerId) ?? customers[0];
+  const selectedCustomer = selectedConversation
+    ? customers.find((item) => item.id === selectedConversation.customerId) ?? customers[0]
+    : undefined;
 
   const filteredConversations = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -55,7 +57,7 @@ export function ConversationsPageContent() {
         || conversation.labels.some((label) => label.name.toLowerCase().includes(normalized));
       return matchesFilter && matchesLabel && matchesQuery;
     });
-  }, [conversations, filter, selectedLabelIds, query]);
+  }, [conversations, customers, filter, selectedLabelIds, query]);
 
   function openConversation(conversation: Conversation) {
     setSelectedConversationId(conversation.id);
@@ -65,6 +67,7 @@ export function ConversationsPageContent() {
 
   function sendMessage(event: FormEvent) {
     event.preventDefault();
+    if (!selectedConversation) return;
     const content = draft.trim();
     if (!content) return;
     const nextMessage = {
@@ -73,19 +76,21 @@ export function ConversationsPageContent() {
       content,
       direction: 'outgoing' as const,
       senderType: 'agent' as const,
-      senderName: 'Atención Harmony',
+      senderName: 'Atención',
       createdAt: messageTimeFormatter.format(new Date()),
       status: 'sent' as const,
     };
-    setConversations((current) => current.map((conversation) => conversation.id === selectedConversation.id ? { ...conversation, status: 'open', assignedTo: 'Atención Harmony', lastMessageAt: 'Ahora', messages: [...conversation.messages, nextMessage] } : conversation));
+    setConversations((current) => current.map((conversation) => conversation.id === selectedConversation.id ? { ...conversation, status: 'open', assignedTo: 'Atención', lastMessageAt: 'Ahora', messages: [...conversation.messages, nextMessage] } : conversation));
     setDraft('');
   }
 
   function changeStatus(status: ConversationStatus) {
+    if (!selectedConversation) return;
     setConversations((current) => current.map((item) => item.id === selectedConversation.id ? { ...item, status } : item));
   }
 
   function toggleConversationLabel(labelId: string) {
+    if (!selectedConversation) return;
     const label = labels.find((item) => item.id === labelId);
     if (!label) return;
 
@@ -100,6 +105,7 @@ export function ConversationsPageContent() {
   }
 
   function createConversationLabel(name: string) {
+    if (!selectedConversation) return;
     const normalizedName = normalizeConversationLabelName(name);
     if (!normalizedName) return;
 
@@ -186,6 +192,17 @@ export function ConversationsPageContent() {
     setSelectedLabelIds((current) => current.filter((id) => id !== labelId));
   }
 
+  if (!selectedConversation || !selectedCustomer) {
+    return (
+      <div className="grid min-h-0 flex-1 place-items-center p-6">
+        <Panel className="max-w-md p-8 text-center">
+          <h2 className="text-base font-semibold">Aún no hay conversaciones</h2>
+          <p className="mt-2 text-sm text-neutral/50">Este workspace está aislado y todavía no tiene clientes o mensajes asociados.</p>
+        </Panel>
+      </div>
+    );
+  }
+
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 xl:grid-cols-[330px_minmax(520px,1fr)_300px] 2xl:grid-cols-[360px_minmax(620px,1fr)_320px]">
       <ConversationList
@@ -230,14 +247,14 @@ export function ConversationsPageContent() {
 }
 
 export function CustomersPageContent() {
-  const { conversations, selectedCustomerId, setSelectedCustomerId, setSelectedConversationId } = useBackofficeState();
+  const { customers, conversations, selectedCustomerId, setSelectedCustomerId, setSelectedConversationId } = useBackofficeState();
   const [query, setQuery] = useState('');
 
   const filteredCustomers = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return customers;
     return customers.filter((customer) => [customer.name, customer.phone, customer.email ?? '', ...customer.tags].some((value) => value.toLowerCase().includes(normalized)));
-  }, [query]);
+  }, [customers, query]);
 
   function openCustomer(customer: Customer) {
     setSelectedCustomerId(customer.id);
@@ -245,11 +262,23 @@ export function CustomersPageContent() {
     if (conversation) setSelectedConversationId(conversation.id);
   }
 
-  return <CustomersTable customers={filteredCustomers} selectedCustomerId={selectedCustomerId} conversations={conversations} query={query} onQueryChange={setQuery} onSelect={openCustomer} />;
+  return <CustomersTable customers={filteredCustomers} allCustomers={customers} selectedCustomerId={selectedCustomerId} conversations={conversations} query={query} onQueryChange={setQuery} onSelect={openCustomer} />;
 }
 
-function CustomersTable({ customers: rows, selectedCustomerId, conversations, query, onQueryChange, onSelect }: { customers: Customer[]; selectedCustomerId: string; conversations: Conversation[]; query: string; onQueryChange: (value: string) => void; onSelect: (customer: Customer) => void }) {
-  const selected = customers.find((item) => item.id === selectedCustomerId) ?? customers[0];
+function CustomersTable({ customers: rows, allCustomers, selectedCustomerId, conversations, query, onQueryChange, onSelect }: { customers: Customer[]; allCustomers: Customer[]; selectedCustomerId: string; conversations: Conversation[]; query: string; onQueryChange: (value: string) => void; onSelect: (customer: Customer) => void }) {
+  const selected = allCustomers.find((item) => item.id === selectedCustomerId) ?? allCustomers[0];
+
+  if (!selected) {
+    return (
+      <div className="min-h-0 flex-1 overflow-auto p-3 md:p-5">
+        <Panel className="p-8 text-center">
+          <h2 className="text-base font-semibold">Aún no hay clientes</h2>
+          <p className="mt-2 text-sm text-neutral/50">Los clientes que se creen o lleguen por los canales de este workspace aparecerán aquí.</p>
+        </Panel>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-0 flex-1 overflow-auto p-3 md:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">

@@ -2,7 +2,7 @@ import 'server-only';
 
 import { cache } from 'react';
 import { userAdminService } from '@/composition/users';
-import { getCurrentAccessProfile, requirePermission } from './auth';
+import { getCurrentAccessProfile, getCurrentWorkspaceContext, requirePermission } from './auth';
 
 export interface UserListDTO {
   userId: string;
@@ -15,9 +15,9 @@ export interface UserListDTO {
 }
 
 export const getUsersPageData = cache(async () => {
-  const actor = await requirePermission('users.read');
+  const [actor, workspace] = await Promise.all([requirePermission('users.read'), getCurrentWorkspaceContext()]);
   const [users, roles] = await Promise.all([
-    userAdminService.list(),
+    userAdminService.list(workspace.current.id),
     userAdminService.listRoles(),
   ]);
 
@@ -31,6 +31,7 @@ export const getUsersPageData = cache(async () => {
   })();
 
   return {
+    workspaceId: workspace.current.id,
     actor: { userId: actor.userId, profileId: actor.profileId, displayName: actor.displayName },
     canManage,
     roles: roles.map((role) => ({ code: role.code, name: role.name, description: role.description })),

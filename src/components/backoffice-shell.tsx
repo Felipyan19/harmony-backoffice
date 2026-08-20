@@ -2,51 +2,84 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ReactNode } from 'react';
-import { Bell, Inbox, LayoutDashboard, LogOut, ShieldCheck, Users } from 'lucide-react';
+import { type CSSProperties, type ReactNode } from 'react';
+import { Bell, Building2, Inbox, LayoutDashboard, LogOut, ShieldCheck, Users } from 'lucide-react';
 import { BrandIcon } from '@/components/brand-icon';
 import { authClient } from '@/lib/auth/client';
-import { customers } from '@/lib/mock-data';
+import { switchWorkspaceAction } from '@/app/(backoffice)/workspace-actions';
+import type { PlatformRole, WorkspaceSummary } from '@/modules/workspaces/domain/workspace';
 import { CountBadge, Popover } from '@/modules/shared/ui';
 import { useBackofficeState } from './backoffice-context';
 
-const NAV_ITEMS = [
+const BASE_NAV_ITEMS = [
   { href: '/', label: 'Inicio', icon: LayoutDashboard, withUnreadBadge: false },
   { href: '/conversaciones', label: 'Conversaciones', icon: Inbox, withUnreadBadge: true },
   { href: '/clientes', label: 'Clientes', icon: Users, withUnreadBadge: false },
   { href: '/usuarios', label: 'Usuarios', icon: ShieldCheck, withUnreadBadge: false },
 ] as const;
 
-const PAGE_META: Record<string, { title: string; subtitle: string }> = {
-  '/': { title: 'Inicio', subtitle: 'Resumen operativo de la atención en Harmony' },
-  '/conversaciones': { title: 'Conversaciones', subtitle: 'Gestiona y responde las conversaciones de tus clientes' },
-  '/clientes': { title: 'Clientes', subtitle: 'Consulta y organiza la información de tus clientes' },
-  '/usuarios': { title: 'Usuarios', subtitle: 'Administra accesos, perfiles y roles del equipo Harmony.' },
-};
-
 type ShellUser = { displayName: string; roleLabel: string; initials: string };
 
-export function BackofficeShell({ children, user }: { children: ReactNode; user: ShellUser }) {
+export function BackofficeShell({
+  children,
+  user,
+  workspace,
+  availableWorkspaces,
+  platformRole,
+}: {
+  children: ReactNode;
+  user: ShellUser;
+  workspace: WorkspaceSummary;
+  availableWorkspaces: WorkspaceSummary[];
+  platformRole?: PlatformRole;
+}) {
   const pathname = usePathname();
-  const { conversations, unreadCount } = useBackofficeState();
+  const { customers, conversations, unreadCount } = useBackofficeState();
+  const canManagePlatform = platformRole === 'owner' || platformRole === 'admin';
+  const navItems = canManagePlatform
+    ? [...BASE_NAV_ITEMS, { href: '/negocios', label: 'Negocios', icon: Building2, withUnreadBadge: false } as const]
+    : BASE_NAV_ITEMS;
 
-  const pageMeta = PAGE_META[pathname] ?? { title: '', subtitle: '' };
+  const pageMeta = getPageMeta(pathname, workspace.name);
+  const style = {
+    '--color-primary': workspace.branding.primaryColor,
+    '--color-primary-dark': workspace.branding.secondaryColor,
+    '--color-label-gold': workspace.branding.accentColor,
+  } as CSSProperties;
 
   return (
-    <main className="flex h-screen overflow-hidden bg-[#f3f2ee] text-neutral">
+    <main style={style} className="flex h-screen overflow-hidden bg-[#f3f2ee] text-neutral">
       <aside className="hidden h-screen w-[220px] shrink-0 flex-col border-r border-white/[0.07] bg-[var(--color-primary-dark)] text-white lg:flex">
-        <div className="flex h-16 items-center gap-3 border-b border-white/[0.07] px-4">
-          <BrandIcon size={36} className="shrink-0 rounded-md" />
-          <div className="min-w-0">
-            <div className="truncate text-base font-semibold tracking-[-0.02em]">Harmony</div>
-            <div className="mt-0.5 text-base text-white/45">Backoffice</div>
+        <div className="flex min-h-16 items-center gap-3 border-b border-white/[0.07] px-4 py-3">
+          {workspace.branding.logoUrl ? (
+            <img src={workspace.branding.logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover" />
+          ) : (
+            <BrandIcon size={36} className="shrink-0 rounded-md" />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-base font-semibold tracking-[-0.02em]">{workspace.name}</div>
+            <div className="mt-0.5 text-sm text-white/45">Backoffice</div>
           </div>
         </div>
 
+        {availableWorkspaces.length > 1 ? (
+          <form action={switchWorkspaceAction} className="border-b border-white/[0.07] px-3 py-3">
+            <label className="mb-1 block text-sm font-medium text-white/35">Negocio actual</label>
+            <select
+              name="workspaceId"
+              defaultValue={workspace.id}
+              onChange={(event) => event.currentTarget.form?.requestSubmit()}
+              className="w-full rounded-md border border-white/10 bg-white/[0.07] px-2 py-2 text-sm text-white outline-none"
+            >
+              {availableWorkspaces.map((item) => <option key={item.id} value={item.id} className="text-neutral">{item.name}</option>)}
+            </select>
+          </form>
+        ) : null}
+
         <nav className="px-2.5 py-4" aria-label="Principal">
-          <div className="mb-2 px-2.5 text-base font-semibold uppercase tracking-[0.16em] text-white/30">Principal</div>
+          <div className="mb-2 px-2.5 text-sm font-semibold uppercase tracking-[0.16em] text-white/30">Principal</div>
           <div className="space-y-1">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <SidebarLink
                 key={item.href}
                 href={item.href}
@@ -62,11 +95,11 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
         <div className="mt-auto border-t border-white/[0.07] px-2.5 pb-2.5 pt-3">
           <div className="mb-2 flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-white/80">
             <span className="relative flex h-2 w-2 shrink-0"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-30" /><span className="relative inline-flex h-2 w-2 rounded-full bg-primary" /></span>
-            <div className="min-w-0 flex-1"><div className="truncate text-base font-semibold text-white/90">Harmony IA</div><div className="mt-0.5 text-base text-white/40">Agente conectado</div></div>
+            <div className="min-w-0 flex-1"><div className="truncate text-base font-semibold text-white/90">{workspace.name} IA</div><div className="mt-0.5 text-sm text-white/40">Agente conectado</div></div>
           </div>
           <div className="flex items-center gap-2.5 rounded-lg border border-white/[0.07] bg-white/[0.035] px-2.5 py-2.5">
             <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-white/[0.08] text-base font-semibold text-white">{user.initials}</div>
-            <div className="min-w-0 flex-1"><div className="truncate text-base font-semibold text-white/90">{user.displayName}</div><div className="mt-0.5 text-base text-white/40">{user.roleLabel}</div></div>
+            <div className="min-w-0 flex-1"><div className="truncate text-base font-semibold text-white/90">{user.displayName}</div><div className="mt-0.5 text-sm text-white/40">{platformRole ? `Ignite · ${platformRole}` : user.roleLabel}</div></div>
             <button onClick={async () => { await authClient.signOut(); window.location.assign('/login'); }} aria-label="Cerrar sesión" title="Cerrar sesión" className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-white/35 transition hover:bg-white/[0.07] hover:text-white/80"><LogOut size={13} /></button>
           </div>
         </div>
@@ -97,7 +130,7 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
                 </button>
               )}
             >
-              {({ close }) => <NotificationTray conversations={conversations} onClose={close} />}
+              {({ close }) => <NotificationTray conversations={conversations} customers={customers} onClose={close} />}
             </Popover>
             <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-sm font-semibold text-white">{user.initials}</div>
           </div>
@@ -109,7 +142,16 @@ export function BackofficeShell({ children, user }: { children: ReactNode; user:
   );
 }
 
-function NotificationTray({ conversations, onClose }: { conversations: ReturnType<typeof useBackofficeState>['conversations']; onClose: () => void }) {
+function getPageMeta(pathname: string, workspaceName: string) {
+  if (pathname === '/') return { title: 'Inicio', subtitle: `Resumen operativo de ${workspaceName}` };
+  if (pathname === '/conversaciones') return { title: 'Conversaciones', subtitle: 'Gestiona y responde las conversaciones de tus clientes' };
+  if (pathname === '/clientes') return { title: 'Clientes', subtitle: 'Consulta y organiza la información de tus clientes' };
+  if (pathname === '/usuarios') return { title: 'Usuarios', subtitle: `Administra los accesos del equipo de ${workspaceName}` };
+  if (pathname === '/negocios') return { title: 'Negocios', subtitle: 'Administra los backoffices y clientes de Ignite' };
+  return { title: '', subtitle: '' };
+}
+
+function NotificationTray({ conversations, customers, onClose }: { conversations: ReturnType<typeof useBackofficeState>['conversations']; customers: ReturnType<typeof useBackofficeState>['customers']; onClose: () => void }) {
   const unreadConversations = conversations.filter((conversation) => conversation.unreadCount > 0).slice(0, 6);
 
   return (

@@ -1,5 +1,5 @@
-// Seeds the initial RBAC catalog (roles, permissions, role_permissions) and a
-// test user per role. Safe to re-run: every insert is idempotent.
+// Seeds the initial RBAC catalog, test users and the default Harmony workspace.
+// Safe to re-run: every insert is idempotent.
 //
 //   npm run db:seed
 
@@ -16,7 +16,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 const ROLES = [
-  { code: 'admin', name: 'Administrador', description: 'Acceso completo a la operación y configuración de Harmony' },
+  { code: 'admin', name: 'Administrador', description: 'Acceso completo a la operación y configuración del workspace' },
   { code: 'agent', name: 'Agente', description: 'Atiende conversaciones y clientes asignados' },
   { code: 'receptionist', name: 'Recepcionista', description: 'Registra clientes y gestiona la bandeja de conversaciones' },
 ];
@@ -102,6 +102,8 @@ try {
     outputLen: 32,
   });
 
+  const profileIdByEmail = {};
+
   for (const testUser of TEST_USERS) {
     const { rows: existing } = await client.query(
       `SELECT id FROM public.users WHERE lower(email) = $1`,
@@ -138,7 +140,9 @@ try {
       [userId, testUser.displayName],
     );
     const profileId = profileResult.rows[0].id;
+    profileIdByEmail[testUser.email] = profileId;
 
+    // Legacy assignments stay in sync until authorization fully moves to workspace memberships.
     await client.query(`DELETE FROM public.profile_roles WHERE profile_id = $1`, [profileId]);
     await client.query(
       `INSERT INTO public.profile_roles (profile_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
@@ -146,8 +150,58 @@ try {
     );
   }
 
+  await client.query(
+    `INSERT INTO public.workspaces (name, slug, status, created_by_profile_id)
+     SELECT 'Harmony', 'harmony', 'active', $1
+     WHERE NOT EXISTS (SELECT 1 FROM public.workspaces WHERE lower(slug) = 'harmony')`,
+    [profileIdByEmail['admin@harmony.test'] ?? null],
+  );
+
+  const { rows: [workspace] } = await client.query(
+    `SELECT id FROM public.workspaces WHERE lower(slug) = 'harmony' LIMIT 1`,
+  );
+
+  await client.query(
+    `INSERT INTO public.workspace_branding
+       (workspace_id, primary_color, secondary_color, accent_color)
+     VALUES ($1, '#33513a', '#22362a', '#b4894a')
+     ON CONFLICT (workspace_id) DO UPDATE
+       SET primary_color = EXCLUDED.primary_color,
+           secondary_color = EXCLUDED.secondary_color,
+           accent_color = EXCLUDED.accent_color,
+           updated_at = now()`,
+    [workspace.id],
+  );
+
+  for (const testUser of TEST_USERS) {
+    const profileId = profileIdByEmail[testUser.email];
+    const { rows: [membership] } = await client.query(
+      `INSERT INTO public.workspace_memberships (workspace_id, profile_id, status)
+       VALUES ($1, $2, 'active')
+       ON CONFLICT (workspace_id, profile_id) DO UPDATE SET status = 'active', updated_at = now()
+       RETURNING id`,
+      [workspace.id, profileId],
+    );
+
+    await client.query(`DELETE FROM public.workspace_membership_roles WHERE membership_id = $1`, [membership.id]);
+    await client.query(
+      `INSERT INTO public.workspace_membership_roles (membership_id, role_id)
+       VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [membership.id, roleIdByCode[testUser.role]],
+    );
+  }
+
+  // Test-only Ignite platform owner so the multi-tenant administration layer can be exercised.
+  await client.query(
+    `INSERT INTO public.platform_staff (profile_id, role)
+     VALUES ($1, 'owner')
+     ON CONFLICT (profile_id) DO UPDATE SET role = EXCLUDED.role, updated_at = now()`,
+    [profileIdByEmail['admin@harmony.test']],
+  );
+
   await client.query('COMMIT');
-  console.log(`Seed complete. Test users (password: ${SEED_PASSWORD}):`);
+  console.log(`Seed complete. Harmony workspace + test users (password: ${SEED_PASSWORD}):`);
   for (const testUser of TEST_USERS) console.log(`  - ${testUser.email} [${testUser.role}]`);
 } catch (error) {
   await client.query('ROLLBACK');

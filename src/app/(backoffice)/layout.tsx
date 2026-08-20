@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
-import { getCurrentAccessProfile } from '@/lib/dal/auth';
+import { backoffice } from '@/composition/backoffice';
+import { getCurrentAccessProfile, getCurrentWorkspaceContext } from '@/lib/dal/auth';
 import { BackofficeStateProvider } from '@/components/backoffice-context';
 import { BackofficeShell } from '@/components/backoffice-shell';
 import type { RoleCode } from '@/modules/access/domain/access';
+import type { ConversationLabel } from '@/modules/conversations/domain/conversation';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +20,21 @@ function initialsFor(name: string) {
 }
 
 export default async function BackofficeLayout({ children }: { children: ReactNode }) {
-  const profile = await getCurrentAccessProfile();
+  const [profile, workspaceContext] = await Promise.all([
+    getCurrentAccessProfile(),
+    getCurrentWorkspaceContext(),
+  ]);
+
+  const [customers, conversations] = await Promise.all([
+    backoffice.customers.list.execute(workspaceContext.current.id),
+    backoffice.conversations.list.execute(workspaceContext.current.id),
+  ]);
+
+  const labelMap = new Map<string, ConversationLabel>();
+  for (const conversation of conversations) {
+    for (const label of conversation.labels) labelMap.set(label.id, label);
+  }
+
   const user = {
     displayName: profile.displayName,
     roleLabel: ROLE_LABELS[profile.roles[0]] ?? 'Miembro del equipo',
@@ -26,8 +42,19 @@ export default async function BackofficeLayout({ children }: { children: ReactNo
   };
 
   return (
-    <BackofficeStateProvider>
-      <BackofficeShell user={user}>{children}</BackofficeShell>
+    <BackofficeStateProvider
+      initialCustomers={customers}
+      initialConversations={conversations}
+      initialLabels={Array.from(labelMap.values())}
+    >
+      <BackofficeShell
+        user={user}
+        workspace={workspaceContext.current}
+        availableWorkspaces={workspaceContext.available}
+        platformRole={workspaceContext.platformRole}
+      >
+        {children}
+      </BackofficeShell>
     </BackofficeStateProvider>
   );
 }

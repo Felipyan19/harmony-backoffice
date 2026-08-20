@@ -11,5 +11,5 @@ export default auth((request) => {
 });
 
 export const config = {
-  matcher: ['/conversaciones/:path*', '/clientes/:path*', '/usuarios/:path*', '/roles/:path*'],
+  matcher: ['/conversaciones/:path*', '/clientes/:path*', '/usuarios/:path*', '/roles/:path*', '/negocios/:path*'],
 };
