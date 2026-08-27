@@ -2,6 +2,8 @@
 
 Backoffice operativo de Harmony Spa para gestionar clientes, conversaciones y atención humana.
 
+<!-- test: verificando que el workflow de Claude PR Review se dispare correctamente -->
+
 ## V1
 
 - Inbox de conversaciones
